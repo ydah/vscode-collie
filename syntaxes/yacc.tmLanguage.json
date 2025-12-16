@@ -1,0 +1,71 @@
+{
+  "name": "Yacc",
+  "scopeName": "source.yacc",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#directives"
+    },
+    {
+      "include": "#rules"
+    },
+    {
+      "include": "#actions"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.yacc",
+          "begin": "/\\*",
+          "end": "\\*/"
+        },
+        {
+          "name": "comment.line.double-slash.yacc",
+          "match": "//.*$"
+        }
+      ]
+    },
+    "directives": {
+      "patterns": [
+        {
+          "name": "keyword.control.yacc",
+          "match": "^%(?:token|type|left|right|nonassoc|prec|start|union|rule|inline)\\b"
+        },
+        {
+          "name": "keyword.control.section.yacc",
+          "match": "^%%"
+        }
+      ]
+    },
+    "rules": {
+      "patterns": [
+        {
+          "name": "entity.name.function.yacc",
+          "match": "^[a-z_][a-z0-9_]*(?=\\s*:)"
+        },
+        {
+          "name": "constant.other.yacc",
+          "match": "\\b[A-Z_][A-Z0-9_]*\\b"
+        }
+      ]
+    },
+    "actions": {
+      "patterns": [
+        {
+          "name": "meta.embedded.block.c",
+          "begin": "\\{",
+          "end": "\\}",
+          "patterns": [
+            {
+              "include": "source.c"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

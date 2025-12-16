@@ -1,0 +1,150 @@
+{
+  "name": "collie",
+  "displayName": "Collie",
+  "description": "Linter and formatter for Lrama Style BNF grammar files",
+  "version": "0.1.0",
+  "publisher": "Yudai Takada",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ydah/vscode-collie"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Linters",
+    "Formatters",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "yacc",
+    "bison",
+    "lrama",
+    "grammar",
+    "bnf",
+    "parser"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "yacc",
+        "aliases": ["Yacc", "Bison", "Lrama"],
+        "extensions": [".y", ".yacc"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "yacc",
+        "scopeName": "source.yacc",
+        "path": "./syntaxes/yacc.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "collie.format",
+        "title": "Format Document",
+        "category": "Collie"
+      },
+      {
+        "command": "collie.lint",
+        "title": "Lint Current File",
+        "category": "Collie"
+      },
+      {
+        "command": "collie.fixAll",
+        "title": "Fix All Auto-correctable Offenses",
+        "category": "Collie"
+      },
+      {
+        "command": "collie.restartServer",
+        "title": "Restart Language Server",
+        "category": "Collie"
+      },
+      {
+        "command": "collie.showOutputChannel",
+        "title": "Show Output Channel",
+        "category": "Collie"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "collie.format",
+        "key": "shift+alt+f",
+        "when": "editorLangId == yacc"
+      },
+      {
+        "command": "collie.fixAll",
+        "key": "ctrl+shift+alt+f",
+        "mac": "cmd+shift+alt+f",
+        "when": "editorLangId == yacc"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Collie",
+      "properties": {
+        "collie.lspPath": {
+          "type": "string",
+          "default": null,
+          "description": "Path to collie-lsp executable (leave empty to use PATH)"
+        },
+        "collie.enableLinting": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable linting"
+        },
+        "collie.enableFormatting": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable formatting"
+        },
+        "collie.configPath": {
+          "type": "string",
+          "default": null,
+          "description": "Path to .collie.yml config file"
+        },
+        "collie.trace.server": {
+          "type": "string",
+          "enum": ["off", "messages", "verbose"],
+          "default": "off",
+          "description": "Traces the communication between VSCode and the language server"
+        }
+      }
+    },
+    "snippets": [
+      {
+        "language": "yacc",
+        "path": "./snippets/yacc.json"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.1",
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.80.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "@vscode/test-electron": "^2.3.0",
+    "eslint": "^8.45.0",
+    "glob": "^10.3.3",
+    "mocha": "^10.2.0",
+    "typescript": "^5.1.6",
+    "@vscode/vsce": "^2.19.0"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^8.1.0"
+  }
+}
