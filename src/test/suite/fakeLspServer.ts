@@ -28,6 +28,17 @@ interface TextDocumentParams {
   };
 }
 
+interface PositionedTextDocumentParams extends TextDocumentParams {
+  position: {
+    line: number;
+    character: number;
+  };
+}
+
+interface RenameParams extends PositionedTextDocumentParams {
+  newName: string;
+}
+
 interface WorkspaceSymbolParams {
   query: string;
 }
@@ -106,6 +117,17 @@ const handleRequest = (message: JsonRpcMessage): void => {
         capabilities: {
           textDocumentSync: 1,
           documentFormattingProvider: true,
+          definitionProvider: true,
+          referencesProvider: true,
+          renameProvider: true,
+          foldingRangeProvider: true,
+          semanticTokensProvider: {
+            legend: {
+              tokenTypes: ['function'],
+              tokenModifiers: []
+            },
+            full: true
+          },
           codeActionProvider: {
             codeActionKinds: ['source.fixAll.collie', 'quickfix']
           },
@@ -129,6 +151,21 @@ const handleRequest = (message: JsonRpcMessage): void => {
       break;
     case 'textDocument/codeAction':
       respond(message.id, fixAllActions(message.params as TextDocumentParams));
+      break;
+    case 'textDocument/definition':
+      respond(message.id, definitionLocations(message.params as PositionedTextDocumentParams));
+      break;
+    case 'textDocument/references':
+      respond(message.id, definitionLocations(message.params as PositionedTextDocumentParams));
+      break;
+    case 'textDocument/rename':
+      respond(message.id, renameEdit(message.params as RenameParams));
+      break;
+    case 'textDocument/foldingRange':
+      respond(message.id, foldingRanges(message.params as TextDocumentParams));
+      break;
+    case 'textDocument/semanticTokens/full':
+      respond(message.id, semanticTokens(message.params as TextDocumentParams));
       break;
     case 'textDocument/documentSymbol':
       respond(message.id, documentSymbols(message.params as TextDocumentParams));
@@ -212,6 +249,79 @@ const fixAllActions = (params: TextDocumentParams): unknown[] => {
       }
     }
   }];
+};
+
+const definitionLocations = (params: PositionedTextDocumentParams): unknown[] => {
+  const uri = params.textDocument.uri;
+  const text = documents.get(uri) ?? '';
+  const rules = extractRules(uri, text);
+  const firstRule = rules[0];
+  if (!firstRule) {
+    return [];
+  }
+
+  return [{
+    uri,
+    range: firstRule.range
+  }];
+};
+
+const renameEdit = (params: RenameParams): unknown => {
+  const uri = params.textDocument.uri;
+  const text = documents.get(uri) ?? '';
+  const firstRule = extractRules(uri, text)[0];
+  if (!firstRule) {
+    return { changes: {} };
+  }
+
+  return {
+    changes: {
+      [uri]: [{
+        range: firstRule.range,
+        newText: params.newName
+      }]
+    }
+  };
+};
+
+const foldingRanges = (params: TextDocumentParams): unknown[] => {
+  const text = documents.get(params.textDocument.uri) ?? '';
+  const lines = text.split(/\r?\n/);
+  const rulesStart = lines.findIndex(line => /^\s*%%\s*$/.test(line));
+  const rulesEnd = lines.findIndex((line, index) => index > rulesStart && /^\s*%%\s*$/.test(line));
+
+  if (rulesStart === -1 || rulesEnd === -1 || rulesEnd <= rulesStart + 1) {
+    return [];
+  }
+
+  return [{
+    startLine: rulesStart + 1,
+    endLine: rulesEnd - 1,
+    kind: 'region'
+  }];
+};
+
+const semanticTokens = (params: TextDocumentParams): unknown => {
+  const text = documents.get(params.textDocument.uri) ?? '';
+  const firstRule = extractRules(params.textDocument.uri, text)[0];
+  if (!firstRule) {
+    return { data: [] };
+  }
+
+  const range = firstRule.range as {
+    start: { line: number; character: number };
+    end: { character: number };
+  };
+
+  return {
+    data: [
+      range.start.line,
+      range.start.character,
+      range.end.character - range.start.character,
+      0,
+      0
+    ]
+  };
 };
 
 const documentSymbols = (params: TextDocumentParams): unknown[] => {

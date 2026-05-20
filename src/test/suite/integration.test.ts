@@ -113,4 +113,45 @@ suite('LSP Integration Tests', () => {
     assert.ok(html.includes('start'));
     assert.ok(html.includes('<svg'));
   });
+
+  test('Should smoke test core LSP navigation capabilities', async function (this: Mocha.Context) {
+    if (isRealServer()) {
+      this.skip();
+    }
+
+    const doc = await vscode.workspace.openTextDocument({
+      language: 'yacc',
+      content: '%token TOKEN\n%%\nstart: TOKEN ;\n%%'
+    });
+    await vscode.window.showTextDocument(doc);
+
+    const position = new vscode.Position(2, 1);
+    const definitions = await vscode.commands.executeCommand<vscode.Location[]>(
+      'vscode.executeDefinitionProvider',
+      doc.uri,
+      position
+    );
+    assert.ok(definitions.length > 0);
+
+    const references = await vscode.commands.executeCommand<vscode.Location[]>(
+      'vscode.executeReferenceProvider',
+      doc.uri,
+      position
+    );
+    assert.ok(references.length > 0);
+
+    const foldingRanges = await vscode.commands.executeCommand<vscode.FoldingRange[]>(
+      'vscode.executeFoldingRangeProvider',
+      doc.uri
+    );
+    assert.ok(foldingRanges.length > 0);
+
+    const renameEdit = await vscode.commands.executeCommand<vscode.WorkspaceEdit>(
+      'vscode.executeDocumentRenameProvider',
+      doc.uri,
+      position,
+      'renamed_start'
+    );
+    assert.ok(renameEdit.size > 0);
+  });
 });
