@@ -1,23 +1,52 @@
 import * as vscode from 'vscode';
+import { LanguageClient } from 'vscode-languageclient/node';
 import { getActiveGrammarEditor, messageForError } from './activeDocument';
 
-export async function fixAllOffenses(): Promise<void> {
+interface ProtocolWorkspaceEdit {
+  changes?: Record<string, Array<{
+    range: {
+      start: { line: number; character: number };
+      end: { line: number; character: number };
+    };
+    newText: string;
+  }>>;
+}
+
+export async function fixAllOffenses(client: LanguageClient | undefined): Promise<void> {
   const editor = getActiveGrammarEditor();
   if (!editor) {
     return;
   }
 
   const document = editor.document;
-  const fullRange = new vscode.Range(0, 0, document.lineCount, 0);
+  const lastLine = document.lineAt(document.lineCount - 1);
+  const fullRange = new vscode.Range(0, 0, lastLine.lineNumber, lastLine.text.length);
 
   try {
+    if (await requestFixAll(client, document)) {
+      void vscode.window.setStatusBarMessage('Collie: Applied fix-all action', 3000);
+      return;
+    }
+
     const action = await findFixAllAction(document.uri, fullRange);
-    if (!action) {
+    if (action) {
+      const before = document.getText();
+      await applyCodeAction(action);
+      if (document.getText() === before && await requestFixAll(client, document)) {
+        void vscode.window.setStatusBarMessage('Collie: Applied fix-all action', 3000);
+        return;
+      }
+
+      void vscode.window.setStatusBarMessage('Collie: Applied fix-all action', 3000);
+      return;
+    }
+
+    const fixedByRequest = await requestFixAll(client, document);
+    if (!fixedByRequest) {
       void vscode.window.setStatusBarMessage('Collie: No fix-all action is available', 3000);
       return;
     }
 
-    await applyCodeAction(action);
     void vscode.window.setStatusBarMessage('Collie: Applied fix-all action', 3000);
   } catch (error) {
     vscode.window.showErrorMessage(`Collie fix-all failed: ${messageForError(error)}`);
@@ -58,7 +87,10 @@ const executeCodeActionProvider = async (
 
 const applyCodeAction = async (action: vscode.CodeAction | vscode.Command): Promise<void> => {
   if ('edit' in action && action.edit) {
-    await vscode.workspace.applyEdit(action.edit);
+    const applied = await vscode.workspace.applyEdit(action.edit);
+    if (!applied) {
+      throw new Error('workspace edit was rejected');
+    }
   }
 
   if ('command' in action && action.command) {
@@ -75,4 +107,53 @@ const applyCodeAction = async (action: vscode.CodeAction | vscode.Command): Prom
 
     await vscode.commands.executeCommand(commandId, ...commandArguments);
   }
+};
+
+const requestFixAll = async (
+  client: LanguageClient | undefined,
+  document: vscode.TextDocument
+): Promise<boolean> => {
+  if (!client) {
+    return false;
+  }
+
+  try {
+    const edit = await client.sendRequest<ProtocolWorkspaceEdit | undefined>(
+      'collie/fixAll',
+      {
+        textDocument: {
+          uri: document.uri.toString()
+        }
+      }
+    );
+
+    if (!edit) {
+      return false;
+    }
+
+    return vscode.workspace.applyEdit(toWorkspaceEdit(edit));
+  } catch {
+    return false;
+  }
+};
+
+const toWorkspaceEdit = (protocolEdit: ProtocolWorkspaceEdit): vscode.WorkspaceEdit => {
+  const workspaceEdit = new vscode.WorkspaceEdit();
+
+  Object.entries(protocolEdit.changes ?? {}).forEach(([uri, edits]) => {
+    edits.forEach(edit => {
+      workspaceEdit.replace(
+        vscode.Uri.parse(uri),
+        new vscode.Range(
+          edit.range.start.line,
+          edit.range.start.character,
+          edit.range.end.line,
+          edit.range.end.character
+        ),
+        edit.newText
+      );
+    });
+  });
+
+  return workspaceEdit;
 };

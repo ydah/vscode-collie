@@ -5,8 +5,8 @@
     { "include": "#comments" },
     { "include": "#prologue" },
     { "include": "#sections" },
-    { "include": "#directives" },
     { "include": "#rules" },
+    { "include": "#directives" },
     { "include": "#symbols" },
     { "include": "#actions" }
   ],

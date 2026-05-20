@@ -38,7 +38,7 @@ export function registerCommands(
     }),
 
     vscode.commands.registerCommand(COMMANDS.fixAll, () => {
-      fixAllOffenses();
+      fixAllOffenses(services.getClient());
     }),
 
     vscode.commands.registerCommand(COMMANDS.restartServer, async () => {

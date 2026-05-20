@@ -179,6 +179,9 @@ const handleRequest = (message: JsonRpcMessage): void => {
     case 'collie/lint':
       handleLint(message);
       break;
+    case 'collie/fixAll':
+      respond(message.id, fixAllEdit(message.params as TextDocumentParams));
+      break;
     default:
       if (message.id !== undefined) {
         respond(message.id, null);
@@ -221,34 +224,43 @@ const formattingEdits = (params: TextDocumentParams): unknown[] => {
   const formatted = formatText(text);
 
   return [{
-    range: {
-      start: { line: 0, character: 0 },
-      end: { line: 9999, character: 0 }
-    },
+    range: fullDocumentRange(text),
     newText: formatted
   }];
 };
 
 const fixAllActions = (params: TextDocumentParams): unknown[] => {
+  return [{
+    title: 'Collie: Fix all offenses',
+    kind: 'source.fixAll.collie',
+    edit: fixAllEdit(params)
+  }];
+};
+
+const fixAllEdit = (params: TextDocumentParams): unknown => {
   const uri = params.textDocument.uri;
   const text = documents.get(uri) ?? '';
   const deduplicated = text.replace(/^%token\s+([A-Z_][A-Z0-9_]*)\n%token\s+\1\n/m, '%token $1\n');
 
-  return [{
-    title: 'Collie: Fix all offenses',
-    kind: 'source.fixAll.collie',
-    edit: {
-      changes: {
-        [uri]: [{
-          range: {
-            start: { line: 0, character: 0 },
-            end: { line: 9999, character: 0 }
-          },
-          newText: deduplicated
-        }]
-      }
+  return {
+    changes: {
+      [uri]: [{
+        range: fullDocumentRange(text),
+        newText: deduplicated
+      }]
     }
-  }];
+  };
+};
+
+const fullDocumentRange = (text: string): unknown => {
+  const lines = text.split(/\r?\n/);
+  return {
+    start: { line: 0, character: 0 },
+    end: {
+      line: lines.length - 1,
+      character: lines[lines.length - 1].length
+    }
+  };
 };
 
 const definitionLocations = (params: PositionedTextDocumentParams): unknown[] => {

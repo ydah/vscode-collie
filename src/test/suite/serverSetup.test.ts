@@ -31,13 +31,22 @@ suite('Server Setup Tests', () => {
   });
 
   test('custom path short-circuits launch candidate resolution', () => {
-    const candidates = getServerLaunchCandidates({
-      ...baseConfig,
-      lspPath: '/custom/collie-lsp'
-    });
+    const testServer = process.env.COLLIE_LSP_TEST_SERVER;
+    delete process.env.COLLIE_LSP_TEST_SERVER;
 
-    assert.strictEqual(candidates.length, 1);
-    assert.strictEqual(candidates[0].command, '/custom/collie-lsp');
-    assert.strictEqual(candidates[0].source, 'custom');
+    try {
+      const candidates = getServerLaunchCandidates({
+        ...baseConfig,
+        lspPath: '/custom/collie-lsp'
+      });
+
+      assert.strictEqual(candidates.length, 1);
+      assert.strictEqual(candidates[0].command, '/custom/collie-lsp');
+      assert.strictEqual(candidates[0].source, 'custom');
+    } finally {
+      if (testServer) {
+        process.env.COLLIE_LSP_TEST_SERVER = testServer;
+      }
+    }
   });
 });
