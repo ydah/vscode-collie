@@ -134,7 +134,7 @@ export class ExtensionController implements vscode.Disposable, CommandServices {
   }
 
   async createConfig(): Promise<void> {
-    const uri = this.defaultConfigUri();
+    const uri = this.defaultConfigUri(this.activeWorkspaceFolder());
     if (!uri) {
       vscode.window.showWarningMessage('Open a workspace before creating .collie.yml');
       return;
@@ -151,8 +151,13 @@ export class ExtensionController implements vscode.Disposable, CommandServices {
 
   async openConfig(): Promise<void> {
     const config = getConfig();
-    const configuredPath = resolveConfigPath(config);
-    const uri = configuredPath ? vscode.Uri.file(configuredPath) : this.defaultConfigUri();
+    const workspaceFolder = this.activeWorkspaceFolder();
+    const configuredPath = workspaceFolder
+      ? resolveConfigPath(config, workspaceFolder.uri)
+      : resolveConfigPath(config);
+    const uri = configuredPath
+      ? vscode.Uri.file(configuredPath)
+      : this.defaultConfigUri(workspaceFolder);
 
     if (!uri) {
       vscode.window.showWarningMessage('Open a workspace before opening Collie config');
@@ -358,13 +363,14 @@ export class ExtensionController implements vscode.Disposable, CommandServices {
   }
 
   private sendConfiguration(): void {
-    const client = this.getClient();
-    if (!client) {
+    if (this.clients.size === 0) {
       return;
     }
 
     const settings = toWorkspaceSettings(getConfig());
-    void client.sendNotification('workspace/didChangeConfiguration', { settings });
+    this.clients.forEach(entry => {
+      void entry.client.sendNotification('workspace/didChangeConfiguration', { settings });
+    });
     void this.updateFeatureContexts();
   }
 
@@ -459,8 +465,10 @@ export class ExtensionController implements vscode.Disposable, CommandServices {
     );
   }
 
-  private defaultConfigUri(): vscode.Uri | undefined {
-    const folder = vscode.workspace.workspaceFolders?.[0];
+  private defaultConfigUri(
+    workspaceFolder: vscode.WorkspaceFolder | undefined
+  ): vscode.Uri | undefined {
+    const folder = workspaceFolder ?? vscode.workspace.workspaceFolders?.[0];
     if (!folder) {
       return undefined;
     }

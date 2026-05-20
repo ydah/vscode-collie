@@ -26,11 +26,11 @@ export function registerCommands(
 ): void {
   context.subscriptions.push(
     vscode.commands.registerCommand(COMMANDS.format, () => {
-      formatDocument(services.getClient());
+      return formatDocument(services.getClient());
     }),
 
     vscode.commands.registerCommand(COMMANDS.lint, () => {
-      lintDocument(
+      return lintDocument(
         services.getClient(),
         services.getStatusBar(),
         services.getOutputChannel()
@@ -38,7 +38,7 @@ export function registerCommands(
     }),
 
     vscode.commands.registerCommand(COMMANDS.fixAll, () => {
-      fixAllOffenses(services.getClient());
+      return fixAllOffenses(services.getClient());
     }),
 
     vscode.commands.registerCommand(COMMANDS.restartServer, async () => {
