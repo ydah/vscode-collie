@@ -1,34 +1,48 @@
 {
   "Token Declaration": {
-    "prefix": "token",
+    "prefix": ["token", "%token"],
     "body": [
       "%token ${1:TOKEN_NAME}"
     ],
     "description": "Declare a token"
   },
   "Token with Type": {
-    "prefix": "tokentype",
+    "prefix": ["tokentype", "%token <"],
     "body": [
       "%token <${1:type}> ${2:TOKEN_NAME}"
     ],
     "description": "Declare a token with type tag"
   },
+  "Typed Nonterminal": {
+    "prefix": ["nterm", "%nterm"],
+    "body": [
+      "%nterm <${1:type}> ${2:nonterminal}"
+    ],
+    "description": "Declare a typed nonterminal"
+  },
   "Left Associative": {
-    "prefix": "left",
+    "prefix": ["left", "%left"],
     "body": [
       "%left ${1:OPERATOR}"
     ],
     "description": "Left associative operator"
   },
   "Right Associative": {
-    "prefix": "right",
+    "prefix": ["right", "%right"],
     "body": [
       "%right ${1:OPERATOR}"
     ],
     "description": "Right associative operator"
   },
+  "Precedence": {
+    "prefix": ["precedence", "%precedence"],
+    "body": [
+      "%precedence ${1:OPERATOR}"
+    ],
+    "description": "Declare operator precedence"
+  },
   "Grammar Rule": {
-    "prefix": "rule",
+    "prefix": ["rule", "%rule"],
     "body": [
       "${1:rule_name}",
       "    : ${2:production}",
@@ -45,21 +59,26 @@
     ],
     "description": "Rule alternative"
   },
-  "Parameterized Rule": {
-    "prefix": "prule",
+  "Empty Alternative": {
+    "prefix": ["empty", "%empty"],
     "body": [
-      "%rule ${1:name}(${2:X}, ${3:Y}): ${4:production} ;"
+      "| %empty"
+    ],
+    "description": "Empty production"
+  },
+  "Parameterized Rule": {
+    "prefix": ["prule", "%rule("],
+    "body": [
+      "%rule ${1:name}(${2:X}): ${3:production} ;"
     ],
     "description": "Lrama parameterized rule"
   },
-  "Inline Rule": {
-    "prefix": "inline",
+  "Inline Parameterized Rule": {
+    "prefix": ["inline", "%inline"],
     "body": [
-      "%inline ${1:rule_name}",
-      "    : ${2:production}",
-      "    ;"
+      "%rule %inline ${1:name}(${2:X}): ${3:production} ;"
     ],
-    "description": "Lrama inline rule"
+    "description": "Lrama inline parameterized rule"
   },
   "Named Reference": {
     "prefix": "ref",
@@ -67,5 +86,42 @@
       "${1:SYMBOL}[${2:name}]"
     ],
     "description": "Lrama named reference"
+  },
+  "Parse Param": {
+    "prefix": ["param", "%parse-param"],
+    "body": [
+      "%parse-param { ${1:VALUE_TYPE} ${2:name} }"
+    ],
+    "description": "Declare parser parameter"
+  },
+  "Lex Param": {
+    "prefix": ["lexparam", "%lex-param"],
+    "body": [
+      "%lex-param { ${1:VALUE_TYPE} ${2:name} }"
+    ],
+    "description": "Declare lexer parameter"
+  },
+  "Code Block": {
+    "prefix": ["code", "%code"],
+    "body": [
+      "%code ${1:requires} {",
+      "${2:code}",
+      "}"
+    ],
+    "description": "Declare a named code block"
+  },
+  "Destructor": {
+    "prefix": ["destructor", "%destructor"],
+    "body": [
+      "%destructor { ${1:code} } ${2:symbols}"
+    ],
+    "description": "Declare destructor code for symbols"
+  },
+  "Printer": {
+    "prefix": ["printer", "%printer"],
+    "body": [
+      "%printer { ${1:code} } ${2:symbols}"
+    ],
+    "description": "Declare printer code for symbols"
   }
 }

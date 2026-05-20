@@ -28,5 +28,23 @@
       "end": "^\\s*%\\}"
     }
   },
-  "wordPattern": "(-?\\d*\\.\\d\\w*)|([^\\`\\~\\!\\@\\#\\%\\^\\&\\*\\(\\)\\-\\=\\+\\[\\{\\]\\}\\\\\\|\\;\\:\\'\\\"\\,\\.\\<\\>\\/\\?\\s]+)"
+  "wordPattern": "(%[A-Za-z][A-Za-z-]*)|(<[^>\\s]+>)|(\\[[A-Za-z_][A-Za-z0-9_]*\\])|([A-Za-z_][A-Za-z0-9_]*[?+*]?)|(-?\\d+)",
+  "indentationRules": {
+    "increaseIndentPattern": "^\\s*(?:[A-Za-z_][A-Za-z0-9_]*(?:\\s*\\([^)]*\\))?\\s*:|\\|\\s*.*|.*\\{[^}\"']*)$",
+    "decreaseIndentPattern": "^\\s*(?:;|\\})"
+  },
+  "onEnterRules": [
+    {
+      "beforeText": "^\\s*[A-Za-z_][A-Za-z0-9_]*(?:\\s*\\([^)]*\\))?\\s*:\\s*$",
+      "action": {
+        "indentAction": "indent"
+      }
+    },
+    {
+      "beforeText": "^\\s*\\|\\s*.*$",
+      "action": {
+        "indentAction": "indent"
+      }
+    }
+  ]
 }

@@ -2,18 +2,13 @@
   "name": "Yacc",
   "scopeName": "source.yacc",
   "patterns": [
-    {
-      "include": "#comments"
-    },
-    {
-      "include": "#directives"
-    },
-    {
-      "include": "#rules"
-    },
-    {
-      "include": "#actions"
-    }
+    { "include": "#comments" },
+    { "include": "#prologue" },
+    { "include": "#sections" },
+    { "include": "#directives" },
+    { "include": "#rules" },
+    { "include": "#symbols" },
+    { "include": "#actions" }
   ],
   "repository": {
     "comments": {
@@ -29,40 +24,160 @@
         }
       ]
     },
+    "prologue": {
+      "patterns": [
+        {
+          "name": "meta.prologue.lrama.yacc",
+          "begin": "^\\s*%\\{",
+          "beginCaptures": {
+            "0": { "name": "keyword.control.prologue.begin.yacc" }
+          },
+          "end": "^\\s*%\\}",
+          "endCaptures": {
+            "0": { "name": "keyword.control.prologue.end.yacc" }
+          },
+          "patterns": [
+            { "include": "source.c" }
+          ]
+        }
+      ]
+    },
+    "sections": {
+      "patterns": [
+        {
+          "name": "keyword.control.section.yacc",
+          "match": "^\\s*%%\\s*$"
+        }
+      ]
+    },
     "directives": {
       "patterns": [
         {
-          "name": "keyword.control.yacc",
-          "match": "^%(?:token|type|left|right|nonassoc|prec|start|union|rule|inline)\\b"
+          "name": "meta.directive.lrama.yacc",
+          "match": "^\\s*(%)(?:require|define|param|lex-param|parse-param|code|initial-action|no-stdlib|locations|union|destructor|printer|error-token|token|type|nterm|left|right|nonassoc|precedence|prec|start|empty|rule|inline)\\b",
+          "captures": {
+            "1": { "name": "punctuation.definition.directive.yacc" },
+            "0": { "name": "keyword.control.directive.yacc" }
+          }
         },
         {
-          "name": "keyword.control.section.yacc",
-          "match": "^%%"
+          "include": "#type-tags"
+        },
+        {
+          "include": "#literals"
         }
       ]
     },
     "rules": {
       "patterns": [
         {
-          "name": "entity.name.function.yacc",
-          "match": "^[a-z_][a-z0-9_]*(?=\\s*:)"
+          "name": "meta.rule.lrama.yacc",
+          "match": "^\\s*(?:(%rule)\\s+)?(?:(%inline)\\s+)?([a-z_][a-z0-9_]*)(\\s*\\([^)]*\\))?(\\s*:)",
+          "captures": {
+            "1": { "name": "keyword.control.rule.yacc" },
+            "2": { "name": "keyword.control.inline.yacc" },
+            "3": { "name": "entity.name.function.rule.yacc" },
+            "4": { "name": "meta.parameters.rule.yacc" },
+            "5": { "name": "punctuation.separator.rule.yacc" }
+          }
         },
         {
-          "name": "constant.other.yacc",
-          "match": "\\b[A-Z_][A-Z0-9_]*\\b"
+          "name": "punctuation.separator.alternative.yacc",
+          "match": "^\\s*\\|"
+        },
+        {
+          "name": "punctuation.terminator.rule.yacc",
+          "match": ";"
+        }
+      ]
+    },
+    "symbols": {
+      "patterns": [
+        { "include": "#named-references" },
+        { "include": "#type-tags" },
+        { "include": "#literals" },
+        {
+          "name": "constant.other.token.yacc",
+          "match": "\\b[A-Z_][A-Z0-9_]*(?=\\b|\\[)"
+        },
+        {
+          "name": "variable.parameterized-symbol.yacc",
+          "match": "\\b[a-z_][a-z0-9_]*(?:\\s*\\([^)]*\\))?[?+*]?"
+        }
+      ]
+    },
+    "named-references": {
+      "patterns": [
+        {
+          "name": "entity.name.tag.named-reference.yacc",
+          "match": "\\[[A-Za-z_][A-Za-z0-9_]*\\]"
+        }
+      ]
+    },
+    "type-tags": {
+      "patterns": [
+        {
+          "name": "storage.type.tag.yacc",
+          "match": "<[^>\\s]+>"
+        }
+      ]
+    },
+    "literals": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.token-alias.yacc",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            { "match": "\\\\.", "name": "constant.character.escape.yacc" }
+          ]
+        },
+        {
+          "name": "string.quoted.single.token-alias.yacc",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            { "match": "\\\\.", "name": "constant.character.escape.yacc" }
+          ]
+        },
+        {
+          "name": "constant.numeric.token-id.yacc",
+          "match": "\\b\\d+\\b"
         }
       ]
     },
     "actions": {
       "patterns": [
+        { "include": "#action-block" }
+      ]
+    },
+    "action-block": {
+      "name": "meta.embedded.block.c.yacc",
+      "begin": "\\{",
+      "end": "\\}",
+      "patterns": [
+        { "include": "#comments" },
+        { "include": "#c-strings" },
+        { "include": "#action-block" },
+        { "include": "source.c" }
+      ]
+    },
+    "c-strings": {
+      "patterns": [
         {
-          "name": "meta.embedded.block.c",
-          "begin": "\\{",
-          "end": "\\}",
+          "name": "string.quoted.double.c.yacc",
+          "begin": "\"",
+          "end": "\"",
           "patterns": [
-            {
-              "include": "source.c"
-            }
+            { "match": "\\\\.", "name": "constant.character.escape.c.yacc" }
+          ]
+        },
+        {
+          "name": "string.quoted.single.c.yacc",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            { "match": "\\\\.", "name": "constant.character.escape.c.yacc" }
           ]
         }
       ]
