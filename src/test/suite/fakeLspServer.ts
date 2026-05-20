@@ -28,6 +28,14 @@ interface TextDocumentParams {
   };
 }
 
+interface WorkspaceSymbolParams {
+  query: string;
+}
+
+interface SyntaxDiagramParams extends TextDocumentParams {
+  ruleName: string;
+}
+
 const documents = new Map<string, string>();
 let inputBuffer = Buffer.alloc(0);
 
@@ -100,6 +108,11 @@ const handleRequest = (message: JsonRpcMessage): void => {
           documentFormattingProvider: true,
           codeActionProvider: {
             codeActionKinds: ['source.fixAll.collie', 'quickfix']
+          },
+          documentSymbolProvider: true,
+          workspaceSymbolProvider: true,
+          experimental: {
+            syntaxDiagramProvider: true
           }
         },
         serverInfo: {
@@ -116,6 +129,15 @@ const handleRequest = (message: JsonRpcMessage): void => {
       break;
     case 'textDocument/codeAction':
       respond(message.id, fixAllActions(message.params as TextDocumentParams));
+      break;
+    case 'textDocument/documentSymbol':
+      respond(message.id, documentSymbols(message.params as TextDocumentParams));
+      break;
+    case 'workspace/symbol':
+      respond(message.id, workspaceSymbols(message.params as WorkspaceSymbolParams));
+      break;
+    case 'collie/syntaxDiagram':
+      respond(message.id, syntaxDiagram(message.params as SyntaxDiagramParams));
       break;
     case 'collie/lint':
       handleLint(message);
@@ -191,6 +213,67 @@ const fixAllActions = (params: TextDocumentParams): unknown[] => {
     }
   }];
 };
+
+const documentSymbols = (params: TextDocumentParams): unknown[] => {
+  const uri = params.textDocument.uri;
+  const text = documents.get(uri) ?? '';
+  return extractRules(uri, text).map(rule => ({
+    name: rule.name,
+    kind: 12,
+    range: rule.range,
+    selectionRange: rule.range
+  }));
+};
+
+const workspaceSymbols = (params: WorkspaceSymbolParams): unknown[] => {
+  const query = params.query.toLowerCase();
+  return [...documents.entries()].flatMap(([uri, text]) => {
+    return extractRules(uri, text)
+      .filter(rule => rule.name.toLowerCase().includes(query))
+      .map(rule => ({
+        name: rule.name,
+        kind: 12,
+        containerName: 'grammar',
+        location: {
+          uri,
+          range: rule.range
+        }
+      }));
+  });
+};
+
+const extractRules = (_uri: string, text: string): Array<{ name: string; range: unknown }> => {
+  return [...text.matchAll(/^\s*(?:%rule\s+)?(?:%inline\s+)?([a-z_][a-z0-9_]*)(?:\s*\([^)]*\))?\s*:/gm)]
+    .map(match => {
+      const offset = match.index ?? 0;
+      const line = lineForOffset(text, offset);
+      const character = match[0].search(/[A-Za-z_]/);
+      const startCharacter = Math.max(0, character);
+      return {
+        name: match[1],
+        range: {
+          start: { line, character: startCharacter },
+          end: { line, character: startCharacter + match[1].length }
+        }
+      };
+    });
+};
+
+const syntaxDiagram = (params: SyntaxDiagramParams): SyntaxDiagramResponse => {
+  return {
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="80" role="img" aria-label="${params.ruleName}">
+  <rect x="8" y="20" width="120" height="40" rx="6" fill="#2b579a"/>
+  <text x="68" y="45" text-anchor="middle" fill="#fff" font-size="14">${params.ruleName}</text>
+  <path d="M128 40 H220" stroke="#888" stroke-width="2"/>
+  <rect x="220" y="20" width="92" height="40" rx="6" fill="#444"/>
+  <text x="266" y="45" text-anchor="middle" fill="#fff" font-size="14">production</text>
+</svg>`
+  };
+};
+
+interface SyntaxDiagramResponse {
+  svg: string;
+}
 
 const processMessage = (message: JsonRpcMessage): void => {
   if (message.id === undefined) {

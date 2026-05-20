@@ -5,6 +5,8 @@ import { StatusBar } from '../features/statusBar';
 import { formatDocument } from './format';
 import { lintDocument } from './lint';
 import { fixAllOffenses } from './fixAll';
+import { searchCollieSymbols } from './symbols';
+import { previewSyntaxDiagram } from './syntaxDiagram';
 
 export interface CommandServices {
   getClient(): LanguageClient | undefined;
@@ -50,6 +52,14 @@ export function registerCommands(
     vscode.commands.registerCommand(COMMANDS.checkSetup, () => services.checkSetup()),
     vscode.commands.registerCommand(COMMANDS.copyEnvironmentInfo, () => services.copyEnvironmentInfo()),
     vscode.commands.registerCommand(COMMANDS.createConfig, () => services.createConfig()),
-    vscode.commands.registerCommand(COMMANDS.openConfig, () => services.openConfig())
+    vscode.commands.registerCommand(COMMANDS.openConfig, () => services.openConfig()),
+
+    vscode.commands.registerCommand(COMMANDS.searchSymbols, (query?: string) => {
+      return searchCollieSymbols(query);
+    }),
+
+    vscode.commands.registerCommand(COMMANDS.previewSyntaxDiagram, (ruleName?: string) => {
+      return previewSyntaxDiagram(services.getClient(), ruleName);
+    })
   );
 }

@@ -5,6 +5,7 @@ import { createClient, ensureLogDirectory } from './client';
 import { CommandServices, registerCommands } from './commands';
 import { getConfig, resolveConfigPath, toWorkspaceSettings } from './config';
 import { OUTPUT_CHANNEL_NAME, SETTINGS } from './constants';
+import { clearFeatureContexts, featureSupportFor, setFeatureContexts } from './features/capabilities';
 import { StatusBar } from './features/statusBar';
 import {
   findAvailableServer,
@@ -34,6 +35,7 @@ export class ExtensionController implements vscode.Disposable, CommandServices {
     registerCommands(this.context, this);
     this.registerWorkspaceListeners();
     this.updateActiveDocument();
+    await clearFeatureContexts();
 
     if (!vscode.workspace.isTrusted) {
       this.statusBar.setWorkspaceUntrusted();
@@ -95,6 +97,7 @@ export class ExtensionController implements vscode.Disposable, CommandServices {
     const candidates = getServerLaunchCandidates(config)
       .map(candidate => `- ${candidate.displayCommand} [${candidate.source}]`)
       .join('\n');
+    const support = featureSupportFor(this.client?.initializeResult?.capabilities, config);
 
     const info = [
       `Collie extension: ${this.context.extension.id}`,
@@ -107,6 +110,7 @@ export class ExtensionController implements vscode.Disposable, CommandServices {
       `Linting enabled: ${config.enableLinting}`,
       `Formatting enabled: ${config.enableFormatting}`,
       `Trace: ${config.trace.server}`,
+      `Feature support: format=${support.format}, fixAll=${support.fixAll}, symbols=${support.symbols}, syntaxDiagram=${support.syntaxDiagram}`,
       'Candidates:',
       candidates
     ].join('\n');
@@ -162,6 +166,7 @@ export class ExtensionController implements vscode.Disposable, CommandServices {
 
     this.clientStateDisposable?.dispose();
     void this.stopServer();
+    void clearFeatureContexts();
     this.disposables.forEach(disposable => disposable.dispose());
   }
 
@@ -220,6 +225,7 @@ export class ExtensionController implements vscode.Disposable, CommandServices {
       this.watchClientState(client);
       await client.start();
       this.autoRestartCount = 0;
+      await this.updateFeatureContexts();
       this.statusBar.setReady();
       this.updateActiveDocument();
       this.updateDiagnostics();
@@ -227,6 +233,7 @@ export class ExtensionController implements vscode.Disposable, CommandServices {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.statusBar.setError(message);
+      await clearFeatureContexts();
       this.outputChannel.appendLine(`Failed to start Collie language server: ${message}`);
       await this.showMissingServerActions(message);
     }
@@ -243,6 +250,7 @@ export class ExtensionController implements vscode.Disposable, CommandServices {
     this.client = undefined;
     this.clientStateDisposable?.dispose();
     this.clientStateDisposable = undefined;
+    await clearFeatureContexts();
 
     if (!client) {
       return;
@@ -306,6 +314,15 @@ export class ExtensionController implements vscode.Disposable, CommandServices {
 
     const settings = toWorkspaceSettings(getConfig());
     void client.sendNotification('workspace/didChangeConfiguration', { settings });
+    void this.updateFeatureContexts();
+  }
+
+  private async updateFeatureContexts(): Promise<void> {
+    const support = featureSupportFor(
+      this.client?.initializeResult?.capabilities,
+      getConfig()
+    );
+    await setFeatureContexts(support);
   }
 
   private requiresRestart(event: vscode.ConfigurationChangeEvent): boolean {

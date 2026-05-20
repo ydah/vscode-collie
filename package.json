@@ -121,25 +121,42 @@
         "command": "collie.openConfig",
         "title": "Open Collie Config",
         "category": "Collie"
+      },
+      {
+        "command": "collie.searchSymbols",
+        "title": "Search Symbols",
+        "category": "Collie",
+        "enablement": "collie.symbolsSupported"
+      },
+      {
+        "command": "collie.previewSyntaxDiagram",
+        "title": "Preview Syntax Diagram for Current Rule",
+        "category": "Collie",
+        "enablement": "editorLangId == yacc && collie.syntaxDiagramSupported"
       }
     ],
     "menus": {
       "editor/context": [
         {
           "command": "collie.fixAll",
-          "when": "editorLangId == yacc",
+          "when": "editorLangId == yacc && collie.fixAllSupported",
           "group": "source"
         },
         {
           "command": "collie.format",
-          "when": "editorLangId == yacc",
+          "when": "editorLangId == yacc && collie.formatSupported",
+          "group": "source"
+        },
+        {
+          "command": "collie.previewSyntaxDiagram",
+          "when": "editorLangId == yacc && collie.syntaxDiagramSupported",
           "group": "source"
         }
       ],
       "commandPalette": [
         {
           "command": "collie.format",
-          "when": "editorLangId == yacc"
+          "when": "editorLangId == yacc && collie.formatSupported"
         },
         {
           "command": "collie.lint",
@@ -147,7 +164,15 @@
         },
         {
           "command": "collie.fixAll",
-          "when": "editorLangId == yacc"
+          "when": "editorLangId == yacc && collie.fixAllSupported"
+        },
+        {
+          "command": "collie.searchSymbols",
+          "when": "collie.symbolsSupported"
+        },
+        {
+          "command": "collie.previewSyntaxDiagram",
+          "when": "editorLangId == yacc && collie.syntaxDiagramSupported"
         }
       ]
     },

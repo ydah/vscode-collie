@@ -11,7 +11,16 @@ export const COMMANDS = {
   checkSetup: 'collie.checkSetup',
   copyEnvironmentInfo: 'collie.copyEnvironmentInfo',
   createConfig: 'collie.createConfig',
-  openConfig: 'collie.openConfig'
+  openConfig: 'collie.openConfig',
+  searchSymbols: 'collie.searchSymbols',
+  previewSyntaxDiagram: 'collie.previewSyntaxDiagram'
+} as const;
+
+export const CONTEXTS = {
+  formatSupported: 'collie.formatSupported',
+  fixAllSupported: 'collie.fixAllSupported',
+  symbolsSupported: 'collie.symbolsSupported',
+  syntaxDiagramSupported: 'collie.syntaxDiagramSupported'
 } as const;
 
 export const SETTINGS = {

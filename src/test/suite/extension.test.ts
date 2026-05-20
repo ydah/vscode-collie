@@ -27,5 +27,7 @@ suite('Extension Test Suite', () => {
     assert.ok(collieCommands.includes('collie.copyEnvironmentInfo'));
     assert.ok(collieCommands.includes('collie.createConfig'));
     assert.ok(collieCommands.includes('collie.openConfig'));
+    assert.ok(collieCommands.includes('collie.searchSymbols'));
+    assert.ok(collieCommands.includes('collie.previewSyntaxDiagram'));
   });
 });
