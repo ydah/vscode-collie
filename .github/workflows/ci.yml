@@ -13,6 +13,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         node-version: [18.x, 20.x]
+        vscode-version: [1.80.2, stable]
 
     steps:
     - uses: actions/checkout@v4
@@ -21,22 +22,27 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
+        cache: npm
 
     - name: Install dependencies
-      run: npm install
+      run: npm ci
 
     - name: Run linter
       run: npm run lint
 
-    - name: Compile
-      run: npm run compile
+    - name: Check types
+      run: npm run check-types
 
     - name: Run tests (Linux)
       if: runner.os == 'Linux'
+      env:
+        VSCODE_TEST_VERSION: ${{ matrix.vscode-version }}
       run: xvfb-run -a npm test
 
     - name: Run tests (Windows/macOS)
       if: runner.os != 'Linux'
+      env:
+        VSCODE_TEST_VERSION: ${{ matrix.vscode-version }}
       run: npm test
 
   package:
@@ -50,12 +56,16 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: 20.x
+        cache: npm
 
     - name: Install dependencies
-      run: npm install
+      run: npm ci
 
     - name: Package extension
       run: npm run package
+
+    - name: Smoke test VSIX contents
+      run: npm run package:smoke
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4

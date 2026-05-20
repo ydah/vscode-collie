@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version or semver increment passed to vsce publish
+        required: true
+        default: patch
+  push:
+    tags:
+      - v*
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: npm
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Check
+      run: |
+        npm run lint
+        npm run check-types
+
+    - name: Package extension
+      run: npm run package
+
+    - name: Smoke test VSIX contents
+      run: npm run package:smoke
+
+    - name: Upload VSIX to release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v2
+      with:
+        files: '*.vsix'
+
+    - name: Publish to Marketplace
+      if: github.event_name == 'workflow_dispatch'
+      env:
+        VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      run: npx vsce publish "${{ github.event.inputs.version }}"

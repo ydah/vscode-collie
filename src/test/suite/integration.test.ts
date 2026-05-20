@@ -2,6 +2,10 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 suite('LSP Integration Tests', () => {
+  setup(async () => {
+    await vscode.extensions.getExtension('ydah.collie')?.activate();
+  });
+
   test('Should provide diagnostics for invalid grammar', async () => {
     const doc = await vscode.workspace.openTextDocument({
       language: 'yacc',
@@ -9,9 +13,10 @@ suite('LSP Integration Tests', () => {
     });
 
     await vscode.window.showTextDocument(doc);
+    await vscode.commands.executeCommand('collie.lint');
 
     // Wait for diagnostics
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     const diagnostics = vscode.languages.getDiagnostics(doc.uri);
     assert.ok(diagnostics.length > 0);

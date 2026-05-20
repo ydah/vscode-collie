@@ -22,5 +22,10 @@ suite('Extension Test Suite', () => {
     assert.ok(collieCommands.includes('collie.lint'));
     assert.ok(collieCommands.includes('collie.fixAll'));
     assert.ok(collieCommands.includes('collie.restartServer'));
+    assert.ok(collieCommands.includes('collie.showOutputChannel'));
+    assert.ok(collieCommands.includes('collie.checkSetup'));
+    assert.ok(collieCommands.includes('collie.copyEnvironmentInfo'));
+    assert.ok(collieCommands.includes('collie.createConfig'));
+    assert.ok(collieCommands.includes('collie.openConfig'));
   });
 });

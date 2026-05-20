@@ -3,19 +3,42 @@
   "displayName": "Collie",
   "description": "Linter and formatter for Lrama Style BNF grammar files",
   "version": "0.1.0",
-  "publisher": "Yudai Takada",
+  "publisher": "ydah",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ydah/vscode-collie"
+    "url": "https://github.com/ydah/vscode-collie.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ydah/vscode-collie/issues"
   },
   "engines": {
     "vscode": "^1.80.0"
   },
+  "extensionKind": [
+    "workspace"
+  ],
+  "preview": true,
+  "galleryBanner": {
+    "color": "#2b579a",
+    "theme": "dark"
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Collie does not start external language-server processes until the workspace is trusted.",
+      "restrictedConfigurations": [
+        "collie.lspPath",
+        "collie.configPath",
+        "collie.useBundler"
+      ]
+    }
+  },
   "categories": [
     "Linters",
     "Formatters",
-    "Programming Languages"
+    "Programming Languages",
+    "Snippets"
   ],
   "keywords": [
     "yacc",
@@ -46,17 +69,20 @@
       {
         "command": "collie.format",
         "title": "Format Document",
-        "category": "Collie"
+        "category": "Collie",
+        "enablement": "editorLangId == yacc"
       },
       {
         "command": "collie.lint",
         "title": "Lint Current File",
-        "category": "Collie"
+        "category": "Collie",
+        "enablement": "editorLangId == yacc"
       },
       {
         "command": "collie.fixAll",
         "title": "Fix All Auto-correctable Offenses",
-        "category": "Collie"
+        "category": "Collie",
+        "enablement": "editorLangId == yacc"
       },
       {
         "command": "collie.restartServer",
@@ -67,8 +93,56 @@
         "command": "collie.showOutputChannel",
         "title": "Show Output Channel",
         "category": "Collie"
+      },
+      {
+        "command": "collie.checkSetup",
+        "title": "Check Setup",
+        "category": "Collie"
+      },
+      {
+        "command": "collie.copyEnvironmentInfo",
+        "title": "Copy Environment Info",
+        "category": "Collie"
+      },
+      {
+        "command": "collie.createConfig",
+        "title": "Create .collie.yml",
+        "category": "Collie"
+      },
+      {
+        "command": "collie.openConfig",
+        "title": "Open Collie Config",
+        "category": "Collie"
       }
     ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "collie.fixAll",
+          "when": "editorLangId == yacc",
+          "group": "source"
+        },
+        {
+          "command": "collie.format",
+          "when": "editorLangId == yacc",
+          "group": "source"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "collie.format",
+          "when": "editorLangId == yacc"
+        },
+        {
+          "command": "collie.lint",
+          "when": "editorLangId == yacc"
+        },
+        {
+          "command": "collie.fixAll",
+          "when": "editorLangId == yacc"
+        }
+      ]
+    },
     "keybindings": [
       {
         "command": "collie.format",
@@ -87,9 +161,14 @@
       "title": "Collie",
       "properties": {
         "collie.lspPath": {
-          "type": "string",
+          "type": ["string", "null"],
           "default": null,
           "description": "Path to collie-lsp executable (leave empty to use PATH)"
+        },
+        "collie.useBundler": {
+          "type": "boolean",
+          "default": false,
+          "description": "Start the language server with bundle exec collie-lsp when no custom path is configured"
         },
         "collie.enableLinting": {
           "type": "boolean",
@@ -102,7 +181,7 @@
           "description": "Enable formatting"
         },
         "collie.configPath": {
-          "type": "string",
+          "type": ["string", "null"],
           "default": null,
           "description": "Path to .collie.yml config file"
         },
@@ -114,6 +193,11 @@
         }
       }
     },
+    "configurationDefaults": {
+      "[yacc]": {
+        "editor.defaultFormatter": "ydah.collie"
+      }
+    },
     "snippets": [
       {
         "language": "yacc",
@@ -123,12 +207,14 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
+    "compile": "npm run check-types",
+    "check-types": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
-    "lint": "eslint src --ext ts",
+    "lint": "eslint src --ext ts --max-warnings=0",
     "test": "node ./out/test/runTest.js",
     "package": "vsce package",
+    "package:smoke": "node ./out/test/packageSmoke.js",
     "publish": "vsce publish"
   },
   "devDependencies": {

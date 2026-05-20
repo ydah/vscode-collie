@@ -1,62 +1,118 @@
+import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import {
   LanguageClient,
   LanguageClientOptions,
+  RevealOutputChannelOn,
   ServerOptions,
+  State,
+  Trace,
   TransportKind
 } from 'vscode-languageclient/node';
+import { CollieConfig, resolveConfigPath, toInitializationOptions } from './config';
+import { LANGUAGE_ID } from './constants';
+import { ServerLaunch } from './serverSetup';
 
-export function createClient(context: vscode.ExtensionContext): LanguageClient {
-  // Server options
+export const ensureLogDirectory = (context: vscode.ExtensionContext): void => {
+  fs.mkdirSync(context.logUri.fsPath, { recursive: true });
+};
+
+const traceFor = (config: CollieConfig): Trace => {
+  switch (config.trace.server) {
+    case 'messages':
+      return Trace.Messages;
+    case 'verbose':
+      return Trace.Verbose;
+    case 'off':
+    default:
+      return Trace.Off;
+  }
+};
+
+export const createConfigWatchers = (
+  config: CollieConfig
+): vscode.FileSystemWatcher[] => {
+  const watchers = [
+    vscode.workspace.createFileSystemWatcher('**/.collie.yml')
+  ];
+
+  const resolvedConfigPath = resolveConfigPath(config);
+  if (resolvedConfigPath) {
+    const watcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(
+        path.dirname(resolvedConfigPath),
+        path.basename(resolvedConfigPath)
+      )
+    );
+    watchers.push(watcher);
+  }
+
+  return watchers;
+};
+
+export function createClient(
+  context: vscode.ExtensionContext,
+  outputChannel: vscode.OutputChannel,
+  launch: ServerLaunch,
+  config: CollieConfig
+): LanguageClient {
+  const env = {
+    ...process.env,
+    COLLIE_LSP_LOG: path.join(context.logUri.fsPath, 'collie-lsp.log')
+  };
+
   const serverOptions: ServerOptions = {
     run: {
-      command: getCollieLspCommand(),
-      args: ['--stdio'],
-      transport: TransportKind.stdio
-    },
-    debug: {
-      command: getCollieLspCommand(),
-      args: ['--stdio'],
+      command: launch.command,
+      args: launch.args,
       transport: TransportKind.stdio,
       options: {
-        env: {
-          ...process.env,
-          COLLIE_LSP_LOG: path.join(context.logUri.fsPath, 'collie-lsp.log')
-        }
+        cwd: launch.cwd,
+        env
+      }
+    },
+    debug: {
+      command: launch.command,
+      args: launch.args,
+      transport: TransportKind.stdio,
+      options: {
+        cwd: launch.cwd,
+        env
       }
     }
   };
 
-  // Client options
+  const fileWatchers = createConfigWatchers(config);
   const clientOptions: LanguageClientOptions = {
     documentSelector: [
-      { scheme: 'file', language: 'yacc' },
-      { scheme: 'file', pattern: '**/*.y' }
+      { scheme: 'file', language: LANGUAGE_ID },
+      { scheme: 'untitled', language: LANGUAGE_ID }
     ],
     synchronize: {
-      fileEvents: vscode.workspace.createFileSystemWatcher('**/.collie.yml')
+      configurationSection: 'collie',
+      fileEvents: fileWatchers
     },
-    outputChannelName: 'Collie',
-    revealOutputChannelOn: 4 // RevealOutputChannelOn.Never
+    initializationOptions: toInitializationOptions(context, config),
+    outputChannel,
+    traceOutputChannel: outputChannel,
+    revealOutputChannelOn: RevealOutputChannelOn.Never
   };
 
-  return new LanguageClient(
+  const client = new LanguageClient(
     'collie',
     'Collie Language Server',
     serverOptions,
     clientOptions
   );
-}
 
-function getCollieLspCommand(): string {
-  const config = vscode.workspace.getConfiguration('collie');
-  const customPath = config.get<string>('lspPath');
+  client.setTrace(traceFor(config));
+  const watcherDisposable = client.onDidChangeState(event => {
+    if (event.newState === State.Stopped) {
+      fileWatchers.forEach(watcher => watcher.dispose());
+      watcherDisposable.dispose();
+    }
+  });
 
-  if (customPath) {
-    return customPath;
-  }
-
-  // Try to find collie-lsp in PATH
-  return 'collie-lsp';
+  return client;
 }
