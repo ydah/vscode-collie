@@ -3,6 +3,7 @@
 .serena/**
 issues.md
 src/**
+node_modules/**
 .gitignore
 .eslintrc.json
 tsconfig.json
@@ -11,6 +12,8 @@ tsconfig.json
 out/**/*.map
 /out/**/*.map
 **/*.ts
+out/**
+!out/extension.js
 images/.gitkeep
 .github/**
 out/test

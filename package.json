@@ -54,8 +54,15 @@
     "languages": [
       {
         "id": "yacc",
-        "aliases": ["Yacc", "Bison", "Lrama"],
-        "extensions": [".y", ".yacc"],
+        "aliases": [
+          "Yacc",
+          "Bison",
+          "Lrama"
+        ],
+        "extensions": [
+          ".y",
+          ".yacc"
+        ],
         "configuration": "./language-configuration.json"
       }
     ],
@@ -162,7 +169,10 @@
       "title": "Collie",
       "properties": {
         "collie.lspPath": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "default": null,
           "description": "Path to collie-lsp executable (leave empty to use PATH)"
         },
@@ -182,13 +192,20 @@
           "description": "Enable formatting"
         },
         "collie.configPath": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "default": null,
           "description": "Path to .collie.yml config file"
         },
         "collie.trace.server": {
           "type": "string",
-          "enum": ["off", "messages", "verbose"],
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
           "default": "off",
           "description": "Traces the communication between VSCode and the language server"
         }
@@ -208,7 +225,8 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "npm run check-types",
+    "compile": "npm run check-types && npm run bundle",
+    "bundle": "esbuild src/extension.ts --bundle --external:vscode --format=cjs --platform=node --target=node18 --outfile=out/extension.js --sourcemap --sources-content=false",
     "check-types": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
@@ -225,11 +243,12 @@
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "@vscode/test-electron": "^2.3.0",
+    "@vscode/vsce": "^2.19.0",
+    "esbuild": "^0.28.0",
     "eslint": "^8.45.0",
     "glob": "^10.3.3",
     "mocha": "^10.2.0",
-    "typescript": "^5.1.6",
-    "@vscode/vsce": "^2.19.0"
+    "typescript": "^5.1.6"
   },
   "dependencies": {
     "vscode-languageclient": "^8.1.0"

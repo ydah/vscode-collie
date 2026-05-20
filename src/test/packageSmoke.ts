@@ -87,6 +87,9 @@ const main = (): void => {
   requireEntry(entries, 'extension/package.json');
   requireEntry(entries, 'extension/out/extension.js');
   rejectEntryPrefix(entries, 'extension/src/');
+  rejectEntryPrefix(entries, 'extension/out/client.js');
+  rejectEntryPrefix(entries, 'extension/out/commands/');
+  rejectEntryPrefix(entries, 'extension/out/features/');
   rejectEntryPrefix(entries, 'extension/out/test/');
   rejectEntryPrefix(entries, 'extension/.github/');
   rejectEntryPrefix(entries, 'extension/.serena/');
@@ -95,8 +98,8 @@ const main = (): void => {
     throw new Error('Packaged VSIX unexpectedly includes issues.md');
   }
 
-  if (!entries.some(entry => entry.startsWith('extension/node_modules/vscode-languageclient/'))) {
-    throw new Error('Packaged VSIX is missing vscode-languageclient runtime dependency');
+  if (entries.some(entry => entry.startsWith('extension/node_modules/'))) {
+    throw new Error('Packaged VSIX unexpectedly includes node_modules after bundling');
   }
 
   console.log(`VSIX smoke test passed for ${path.basename(vsixPath)}`);
