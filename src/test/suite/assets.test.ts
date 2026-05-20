@@ -1,6 +1,8 @@
 import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as oniguruma from 'vscode-oniguruma';
+import * as textmate from 'vscode-textmate';
 
 const extensionRoot = path.resolve(__dirname, '../../..');
 
@@ -50,7 +52,54 @@ suite('Language Asset Tests', () => {
     assert.ok(prefixes.includes('%destructor'));
     assert.ok(prefixes.includes('%printer'));
   });
+
+  test('TextMate grammar tokenizes representative Lrama constructs', async () => {
+    const grammar = await loadGrammar();
+    const sample = [
+      '%token <node> TOKEN "token"',
+      '%rule %inline list(X): X | list(X) X ;',
+      'start: TOKEN[name] { $$ = { value: $1 }; } ;'
+    ];
+
+    let ruleStack: textmate.StateStack | null = null;
+    const tokenScopes = sample.flatMap(line => {
+      const result = grammar.tokenizeLine(line, ruleStack);
+      ruleStack = result.ruleStack;
+      return result.tokens.flatMap(token => token.scopes);
+    });
+
+    assert.ok(tokenScopes.includes('keyword.control.directive.yacc'));
+    assert.ok(tokenScopes.includes('storage.type.tag.yacc'));
+    assert.ok(tokenScopes.includes('string.quoted.double.token-alias.yacc'));
+    assert.ok(tokenScopes.includes('keyword.control.inline.yacc'));
+    assert.ok(tokenScopes.includes('entity.name.tag.named-reference.yacc'));
+    assert.ok(tokenScopes.includes('meta.embedded.block.c.yacc'));
+  });
 });
+
+const loadGrammar = async (): Promise<textmate.IGrammar> => {
+  const wasmPath = require.resolve('vscode-oniguruma/release/onig.wasm');
+  const wasm = fs.readFileSync(wasmPath).buffer;
+  await oniguruma.loadWASM(wasm);
+
+  const registry = new textmate.Registry({
+    onigLib: Promise.resolve({
+      createOnigScanner: patterns => new oniguruma.OnigScanner(patterns),
+      createOnigString: text => new oniguruma.OnigString(text)
+    }),
+    loadGrammar: scopeName => {
+      if (scopeName !== 'source.yacc') {
+        return Promise.resolve(null);
+      }
+
+      return Promise.resolve(readJson<textmate.IRawGrammar>('syntaxes/yacc.tmLanguage.json'));
+    }
+  });
+
+  const grammar = await registry.loadGrammar('source.yacc');
+  assert.ok(grammar);
+  return grammar;
+};
 
 const assertRegexPatternsCompile = (value: unknown): void => {
   if (Array.isArray(value)) {
