@@ -87,7 +87,13 @@ const main = (): void => {
   requireEntry(entries, 'extension/package.json');
   requireEntry(entries, 'extension/out/extension.js');
   rejectEntryPrefix(entries, 'extension/src/');
+  rejectEntryPrefix(entries, 'extension/out/test/');
   rejectEntryPrefix(entries, 'extension/.github/');
+  rejectEntryPrefix(entries, 'extension/.serena/');
+
+  if (entries.includes('extension/issues.md')) {
+    throw new Error('Packaged VSIX unexpectedly includes issues.md');
+  }
 
   if (!entries.some(entry => entry.startsWith('extension/node_modules/vscode-languageclient/'))) {
     throw new Error('Packaged VSIX is missing vscode-languageclient runtime dependency');
