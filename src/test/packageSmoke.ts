@@ -4,7 +4,7 @@ import * as path from 'path';
 const END_OF_CENTRAL_DIRECTORY_SIGNATURE = 0x06054b50;
 const CENTRAL_DIRECTORY_FILE_HEADER_SIGNATURE = 0x02014b50;
 const MAX_COMMENT_LENGTH = 0xffff;
-const MAX_VSIX_SIZE_BYTES = 20 * 1024 * 1024;
+const MAX_VSIX_SIZE_BYTES = 2 * 1024 * 1024;
 
 const readZipEntries = (zipPath: string): string[] => {
   const buffer = fs.readFileSync(zipPath);

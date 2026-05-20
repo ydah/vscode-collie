@@ -40,6 +40,11 @@ jobs:
     - name: Smoke test VSIX contents
       run: npm run package:smoke
 
+    - name: Smoke test VSIX installation
+      env:
+        VSCODE_TEST_VERSION: stable
+      run: xvfb-run -a npm run vsix:install-smoke
+
     - name: Upload VSIX to release
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v2

@@ -1,12 +1,26 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 
+const isRealServer = (): boolean => process.env.COLLIE_LSP_REAL_SERVER === '1';
+
 suite('LSP Integration Tests', () => {
   setup(async () => {
     await vscode.extensions.getExtension('ydah.collie')?.activate();
   });
 
-  test('Should provide diagnostics for invalid grammar', async () => {
+  test('Should connect to a real collie-lsp server when requested', async () => {
+    if (!isRealServer()) {
+      return;
+    }
+
+    await vscode.commands.executeCommand('collie.checkSetup');
+  });
+
+  test('Should provide diagnostics for invalid grammar', async function (this: Mocha.Context) {
+    if (isRealServer()) {
+      this.skip();
+    }
+
     const doc = await vscode.workspace.openTextDocument({
       language: 'yacc',
       content: '%token TOKEN\n%token TOKEN\n%%\nstart: TOKEN ;\n%%'
@@ -23,7 +37,11 @@ suite('LSP Integration Tests', () => {
     assert.ok(diagnostics.some(d => d.message.includes('duplicate')));
   });
 
-  test('Should format document', async () => {
+  test('Should format document', async function (this: Mocha.Context) {
+    if (isRealServer()) {
+      this.skip();
+    }
+
     const doc = await vscode.workspace.openTextDocument({
       language: 'yacc',
       content: '%token  TOKEN\n%%\nstart:TOKEN;\n%%'
@@ -39,7 +57,11 @@ suite('LSP Integration Tests', () => {
     assert.ok(formatted.includes('%token TOKEN'));
   });
 
-  test('Should apply Collie fix-all action', async () => {
+  test('Should apply Collie fix-all action', async function (this: Mocha.Context) {
+    if (isRealServer()) {
+      this.skip();
+    }
+
     const doc = await vscode.workspace.openTextDocument({
       language: 'yacc',
       content: '%token TOKEN\n%token TOKEN\n%%\nstart: TOKEN ;\n%%'
@@ -53,7 +75,11 @@ suite('LSP Integration Tests', () => {
     assert.strictEqual((fixed.match(/^%token TOKEN$/gm) ?? []).length, 1);
   });
 
-  test('Should expose symbols through Collie search command', async () => {
+  test('Should expose symbols through Collie search command', async function (this: Mocha.Context) {
+    if (isRealServer()) {
+      this.skip();
+    }
+
     const doc = await vscode.workspace.openTextDocument({
       language: 'yacc',
       content: '%token TOKEN\n%%\nstart: TOKEN ;\n%%'
@@ -68,7 +94,11 @@ suite('LSP Integration Tests', () => {
     assert.ok(symbols.some(symbol => symbol.name === 'start'));
   });
 
-  test('Should preview syntax diagram when server supports it', async () => {
+  test('Should preview syntax diagram when server supports it', async function (this: Mocha.Context) {
+    if (isRealServer()) {
+      this.skip();
+    }
+
     const doc = await vscode.workspace.openTextDocument({
       language: 'yacc',
       content: '%token TOKEN\n%%\nstart: TOKEN ;\n%%'

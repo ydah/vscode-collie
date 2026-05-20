@@ -276,6 +276,7 @@
     "test": "node ./out/test/runTest.js",
     "package": "vsce package",
     "package:smoke": "node ./out/test/packageSmoke.js",
+    "vsix:install-smoke": "node ./out/test/vsixInstallSmoke.js",
     "publish": "vsce publish"
   },
   "devDependencies": {
