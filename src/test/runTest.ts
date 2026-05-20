@@ -11,9 +11,19 @@ async function main() {
     // Passed to --extensionTestsPath
     const extensionTestsPath = path.resolve(__dirname, './suite/index');
     const fakeServerPath = path.resolve(__dirname, './suite/fakeLspServer.js');
+    const inheritedEnv = Object.fromEntries(
+      Object.entries(process.env).filter((entry): entry is [string, string] => {
+        return typeof entry[1] === 'string';
+      })
+    );
     const extensionTestsEnv = process.env.COLLIE_LSP_REAL_SERVER === '1'
-      ? undefined
+      ? {
+        ...inheritedEnv,
+        COLLIE_LSP_REAL_SERVER: '1',
+        RBENV_VERSION: process.env.RBENV_VERSION ?? ''
+      }
       : {
+        ...inheritedEnv,
         COLLIE_LSP_TEST_SERVER: fakeServerPath
       };
 

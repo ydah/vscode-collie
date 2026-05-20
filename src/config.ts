@@ -143,14 +143,17 @@ export const getWorkspaceFolderConfig = (
 
 export const toInitializationOptions = (
   context: vscode.ExtensionContext,
-  config: CollieConfig
+  config: CollieConfig,
+  workspaceFolder?: vscode.WorkspaceFolder
 ): CollieInitializationOptions => ({
   extensionVersion: getExtensionVersion(context),
   enableLinting: config.enableLinting,
   enableFormatting: config.enableFormatting,
-  configPath: resolveConfigPath(config),
+  configPath: workspaceFolder
+    ? resolveConfigPathForFolder(config, workspaceFolder)
+    : resolveConfigPath(config),
   workspaceFolders: getWorkspaceFolderConfig(config),
-  rootUri: vscode.workspace.workspaceFolders?.[0]?.uri.toString(),
+  rootUri: workspaceFolder?.uri.toString() ?? vscode.workspace.workspaceFolders?.[0]?.uri.toString(),
   trace: config.trace.server
 });
 

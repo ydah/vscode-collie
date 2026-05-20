@@ -276,6 +276,7 @@
     "test": "node ./out/test/runTest.js",
     "package": "vsce package",
     "package:smoke": "node ./out/test/packageSmoke.js",
+    "real-lsp:probe": "node ./out/test/realLspProbe.js",
     "vsix:install-smoke": "node ./out/test/vsixInstallSmoke.js",
     "publish": "vsce publish"
   },

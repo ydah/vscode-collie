@@ -37,6 +37,9 @@ jobs:
     - name: Compile
       run: npm run compile
 
+    - name: Probe real collie-lsp protocol
+      run: npm run real-lsp:probe
+
     - name: Run real LSP tests (Linux)
       if: runner.os == 'Linux'
       env:

@@ -10,7 +10,7 @@ import {
   Trace,
   TransportKind
 } from 'vscode-languageclient/node';
-import { CollieConfig, resolveConfigPath, toInitializationOptions } from './config';
+import { CollieConfig, resolveConfigPathForFolder, toInitializationOptions } from './config';
 import { LANGUAGE_ID } from './constants';
 import { ServerLaunch } from './serverSetup';
 
@@ -31,13 +31,18 @@ const traceFor = (config: CollieConfig): Trace => {
 };
 
 export const createConfigWatchers = (
-  config: CollieConfig
+  config: CollieConfig,
+  workspaceFolder?: vscode.WorkspaceFolder
 ): vscode.FileSystemWatcher[] => {
   const watchers = [
-    vscode.workspace.createFileSystemWatcher('**/.collie.yml')
+    workspaceFolder
+      ? vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(workspaceFolder, '**/.collie.yml'))
+      : vscode.workspace.createFileSystemWatcher('**/.collie.yml')
   ];
 
-  const resolvedConfigPath = resolveConfigPath(config);
+  const resolvedConfigPath = workspaceFolder
+    ? resolveConfigPathForFolder(config, workspaceFolder)
+    : undefined;
   if (resolvedConfigPath) {
     const watcher = vscode.workspace.createFileSystemWatcher(
       new vscode.RelativePattern(
@@ -55,7 +60,8 @@ export function createClient(
   context: vscode.ExtensionContext,
   outputChannel: vscode.OutputChannel,
   launch: ServerLaunch,
-  config: CollieConfig
+  config: CollieConfig,
+  workspaceFolder?: vscode.WorkspaceFolder
 ): LanguageClient {
   const env = {
     ...process.env,
@@ -83,20 +89,18 @@ export function createClient(
     }
   };
 
-  const fileWatchers = createConfigWatchers(config);
+  const fileWatchers = createConfigWatchers(config, workspaceFolder);
   const clientOptions: LanguageClientOptions = {
-    documentSelector: [
-      { scheme: 'file', language: LANGUAGE_ID },
-      { scheme: 'untitled', language: LANGUAGE_ID }
-    ],
+    documentSelector: documentSelectorFor(workspaceFolder),
     synchronize: {
       configurationSection: 'collie',
       fileEvents: fileWatchers
     },
-    initializationOptions: toInitializationOptions(context, config),
+    initializationOptions: toInitializationOptions(context, config, workspaceFolder),
     outputChannel,
     traceOutputChannel: outputChannel,
-    revealOutputChannelOn: RevealOutputChannelOn.Never
+    revealOutputChannelOn: RevealOutputChannelOn.Never,
+    workspaceFolder
   };
 
   const client = new LanguageClient(
@@ -116,3 +120,22 @@ export function createClient(
 
   return client;
 }
+
+const documentSelectorFor = (
+  workspaceFolder?: vscode.WorkspaceFolder
+): NonNullable<LanguageClientOptions['documentSelector']> => {
+  if (!workspaceFolder) {
+    return [
+      { scheme: 'file', language: LANGUAGE_ID },
+      { scheme: 'untitled', language: LANGUAGE_ID }
+    ];
+  }
+
+  return [
+    {
+      scheme: 'file',
+      language: LANGUAGE_ID,
+      pattern: `${workspaceFolder.uri.fsPath.replace(/\\/g, '/')}/**/*`
+    }
+  ];
+};

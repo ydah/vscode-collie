@@ -1,4 +1,6 @@
 import * as assert from 'assert';
+import * as path from 'path';
+import * as vscode from 'vscode';
 import {
   executableNamesForPlatform,
   getServerLaunchCandidates
@@ -43,6 +45,29 @@ suite('Server Setup Tests', () => {
       assert.strictEqual(candidates.length, 1);
       assert.strictEqual(candidates[0].command, '/custom/collie-lsp');
       assert.strictEqual(candidates[0].source, 'custom');
+    } finally {
+      if (testServer) {
+        process.env.COLLIE_LSP_TEST_SERVER = testServer;
+      }
+    }
+  });
+
+  test('custom path uses the requested workspace folder as cwd', () => {
+    const testServer = process.env.COLLIE_LSP_TEST_SERVER;
+    delete process.env.COLLIE_LSP_TEST_SERVER;
+    const folder = {
+      uri: vscode.Uri.file(path.join(path.sep, 'tmp', 'workspace-b')),
+      name: 'workspace-b',
+      index: 1
+    };
+
+    try {
+      const candidates = getServerLaunchCandidates({
+        ...baseConfig,
+        lspPath: '/custom/collie-lsp'
+      }, folder);
+
+      assert.strictEqual(candidates[0].cwd, path.join(path.sep, 'tmp', 'workspace-b'));
     } finally {
       if (testServer) {
         process.env.COLLIE_LSP_TEST_SERVER = testServer;

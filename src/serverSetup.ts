@@ -35,8 +35,10 @@ export const executableNamesForPlatform = (platform: NodeJS.Platform): string[] 
     : ['collie-lsp'];
 };
 
-const workspaceBinstubCandidates = (): ServerLaunch[] => {
-  const folders = vscode.workspace.workspaceFolders ?? [];
+const workspaceBinstubCandidates = (
+  workspaceFolder?: vscode.WorkspaceFolder
+): ServerLaunch[] => {
+  const folders = workspaceFolder ? [workspaceFolder] : vscode.workspace.workspaceFolders ?? [];
   const executableNames = executableNamesForPlatform(process.platform);
 
   return folders.flatMap(folder => {
@@ -53,23 +55,27 @@ const workspaceBinstubCandidates = (): ServerLaunch[] => {
   });
 };
 
-const workspaceHasGemfile = (): boolean => {
-  return (vscode.workspace.workspaceFolders ?? []).some(folder => {
+const workspaceHasGemfile = (workspaceFolder?: vscode.WorkspaceFolder): boolean => {
+  const folders = workspaceFolder ? [workspaceFolder] : vscode.workspace.workspaceFolders ?? [];
+  return folders.some(folder => {
     return commandExists(path.join(folder.uri.fsPath, 'Gemfile'));
   });
 };
 
-const primaryWorkspacePath = (): string | undefined => {
-  return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+const primaryWorkspacePath = (workspaceFolder?: vscode.WorkspaceFolder): string | undefined => {
+  return workspaceFolder?.uri.fsPath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 };
 
-export const getServerLaunchCandidates = (config: CollieConfig): ServerLaunch[] => {
+export const getServerLaunchCandidates = (
+  config: CollieConfig,
+  workspaceFolder?: vscode.WorkspaceFolder
+): ServerLaunch[] => {
   const testServer = process.env.COLLIE_LSP_TEST_SERVER;
   if (testServer) {
     return [{
       command: process.execPath,
       args: [testServer, '--stdio'],
-      cwd: primaryWorkspacePath(),
+      cwd: primaryWorkspacePath(workspaceFolder),
       source: 'test',
       displayCommand: `${process.execPath} ${testServer}`
     }];
@@ -79,19 +85,19 @@ export const getServerLaunchCandidates = (config: CollieConfig): ServerLaunch[] 
     return [{
       command: config.lspPath,
       args: ['--stdio'],
-      cwd: primaryWorkspacePath(),
+      cwd: primaryWorkspacePath(workspaceFolder),
       source: 'custom',
       displayCommand: config.lspPath
     }];
   }
 
-  const candidates = workspaceBinstubCandidates();
+  const candidates = workspaceBinstubCandidates(workspaceFolder);
 
-  if (config.useBundler || workspaceHasGemfile()) {
+  if (config.useBundler || workspaceHasGemfile(workspaceFolder)) {
     candidates.push({
       command: 'bundle',
       args: ['exec', 'collie-lsp', '--stdio'],
-      cwd: primaryWorkspacePath(),
+      cwd: primaryWorkspacePath(workspaceFolder),
       source: 'bundler',
       displayCommand: 'bundle exec collie-lsp'
     });
@@ -100,7 +106,7 @@ export const getServerLaunchCandidates = (config: CollieConfig): ServerLaunch[] 
   candidates.push({
     command: 'collie-lsp',
     args: ['--stdio'],
-    cwd: primaryWorkspacePath(),
+    cwd: primaryWorkspacePath(workspaceFolder),
     source: 'path',
     displayCommand: 'collie-lsp'
   });
@@ -164,9 +170,10 @@ export const checkServerLaunch = async (
 };
 
 export const findAvailableServer = async (
-  config: CollieConfig
+  config: CollieConfig,
+  workspaceFolder?: vscode.WorkspaceFolder
 ): Promise<SetupCheckResult> => {
-  const candidates = getServerLaunchCandidates(config);
+  const candidates = getServerLaunchCandidates(config, workspaceFolder);
   let lastResult: SetupCheckResult | undefined;
 
   for (const candidate of candidates) {
