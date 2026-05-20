@@ -206,6 +206,14 @@
           "default": false,
           "description": "Start the language server with bundle exec collie-lsp when no custom path is configured"
         },
+        "collie.minimumServerVersion": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Minimum collie-lsp version to accept before showing a warning"
+        },
         "collie.enableLinting": {
           "type": "boolean",
           "default": true,
@@ -233,6 +241,15 @@
           ],
           "default": "off",
           "description": "Traces the communication between VSCode and the language server"
+        },
+        "collie-lsp.serverPath": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "deprecationMessage": "Use collie.lspPath instead.",
+          "description": "Deprecated alias for collie.lspPath"
         }
       }
     },

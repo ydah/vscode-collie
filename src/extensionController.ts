@@ -14,6 +14,7 @@ import {
   ServerLaunch,
   SetupCheckResult
 } from './serverSetup';
+import { isVersionAtLeast } from './version';
 
 const RESTART_DEBOUNCE_MS = 300;
 const MAX_AUTO_RESTARTS = 3;
@@ -211,6 +212,7 @@ export class ExtensionController implements vscode.Disposable, CommandServices {
     }
 
     await this.startClient(result.launch, result.version, config);
+    this.warnIfServerVersionUnsupported(result.version, config.minimumServerVersion);
   }
 
   private async startClient(
@@ -382,6 +384,19 @@ export class ExtensionController implements vscode.Disposable, CommandServices {
     } else if (action === 'Show Output') {
       this.showOutputChannel();
     }
+  }
+
+  private warnIfServerVersionUnsupported(
+    version: string | undefined,
+    minimumVersion: string | undefined
+  ): void {
+    if (isVersionAtLeast(version, minimumVersion)) {
+      return;
+    }
+
+    vscode.window.showWarningMessage(
+      `Collie language server ${version ?? 'unknown'} is older than required ${minimumVersion}.`
+    );
   }
 
   private defaultConfigUri(): vscode.Uri | undefined {

@@ -7,6 +7,7 @@ export type ServerTrace = 'off' | 'messages' | 'verbose';
 export interface CollieConfig {
   lspPath: string | undefined;
   useBundler: boolean;
+  minimumServerVersion: string | undefined;
   enableLinting: boolean;
   enableFormatting: boolean;
   configPath: string | undefined;
@@ -20,7 +21,15 @@ export interface CollieInitializationOptions {
   enableLinting: boolean;
   enableFormatting: boolean;
   configPath: string | undefined;
+  workspaceFolders: CollieWorkspaceFolderConfig[];
+  rootUri: string | undefined;
   trace: ServerTrace;
+}
+
+export interface CollieWorkspaceFolderConfig {
+  name: string;
+  uri: string;
+  configPath: string | undefined;
 }
 
 export interface CollieWorkspaceSettings {
@@ -28,6 +37,7 @@ export interface CollieWorkspaceSettings {
     enableLinting: boolean;
     enableFormatting: boolean;
     configPath: string | undefined;
+    workspaceFolders: CollieWorkspaceFolderConfig[];
     trace: {
       server: ServerTrace;
     };
@@ -68,6 +78,7 @@ export const getConfig = (): CollieConfig => {
   return {
     lspPath: getConfiguredLspPath(),
     useBundler: config.get<boolean>('useBundler', false),
+    minimumServerVersion: normalizeOptionalString(config.get<string | null>('minimumServerVersion')),
     enableLinting: config.get<boolean>('enableLinting', true),
     enableFormatting: config.get<boolean>('enableFormatting', true),
     configPath: normalizeOptionalString(config.get<string | null>('configPath')),
@@ -105,6 +116,31 @@ export const resolveConfigPath = (
   return path.join(workspaceFolder.uri.fsPath, config.configPath);
 };
 
+export const resolveConfigPathForFolder = (
+  config: CollieConfig,
+  workspaceFolder: vscode.WorkspaceFolder
+): string | undefined => {
+  if (!config.configPath) {
+    return undefined;
+  }
+
+  if (path.isAbsolute(config.configPath)) {
+    return path.normalize(config.configPath);
+  }
+
+  return path.join(workspaceFolder.uri.fsPath, config.configPath);
+};
+
+export const getWorkspaceFolderConfig = (
+  config: CollieConfig
+): CollieWorkspaceFolderConfig[] => {
+  return (vscode.workspace.workspaceFolders ?? []).map(folder => ({
+    name: folder.name,
+    uri: folder.uri.toString(),
+    configPath: resolveConfigPathForFolder(config, folder)
+  }));
+};
+
 export const toInitializationOptions = (
   context: vscode.ExtensionContext,
   config: CollieConfig
@@ -113,6 +149,8 @@ export const toInitializationOptions = (
   enableLinting: config.enableLinting,
   enableFormatting: config.enableFormatting,
   configPath: resolveConfigPath(config),
+  workspaceFolders: getWorkspaceFolderConfig(config),
+  rootUri: vscode.workspace.workspaceFolders?.[0]?.uri.toString(),
   trace: config.trace.server
 });
 
@@ -121,6 +159,7 @@ export const toWorkspaceSettings = (config: CollieConfig): CollieWorkspaceSettin
     enableLinting: config.enableLinting,
     enableFormatting: config.enableFormatting,
     configPath: resolveConfigPath(config),
+    workspaceFolders: getWorkspaceFolderConfig(config),
     trace: {
       server: config.trace.server
     }

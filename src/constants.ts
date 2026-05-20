@@ -27,6 +27,7 @@ export const SETTINGS = {
   section: 'collie',
   lspPath: 'collie.lspPath',
   useBundler: 'collie.useBundler',
+  minimumServerVersion: 'collie.minimumServerVersion',
   enableLinting: 'collie.enableLinting',
   enableFormatting: 'collie.enableFormatting',
   configPath: 'collie.configPath',

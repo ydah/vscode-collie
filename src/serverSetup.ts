@@ -29,11 +29,15 @@ const commandExists = (filePath: string): boolean => {
   }
 };
 
-const workspaceBinstubCandidates = (): ServerLaunch[] => {
-  const folders = vscode.workspace.workspaceFolders ?? [];
-  const executableNames = process.platform === 'win32'
+export const executableNamesForPlatform = (platform: NodeJS.Platform): string[] => {
+  return platform === 'win32'
     ? ['collie-lsp.cmd', 'collie-lsp.bat', 'collie-lsp']
     : ['collie-lsp'];
+};
+
+const workspaceBinstubCandidates = (): ServerLaunch[] => {
+  const folders = vscode.workspace.workspaceFolders ?? [];
+  const executableNames = executableNamesForPlatform(process.platform);
 
   return folders.flatMap(folder => {
     return executableNames
