@@ -21,8 +21,34 @@ export async function formatDocument(client: LanguageClient | undefined): Promis
   }
 
   try {
-    await vscode.commands.executeCommand('editor.action.formatDocument');
+    const edits = await vscode.commands.executeCommand<vscode.TextEdit[] | undefined>(
+      'vscode.executeFormatDocumentProvider',
+      editor.document.uri,
+      formattingOptionsFor(editor)
+    );
+    if (!edits || edits.length === 0) {
+      return;
+    }
+
+    const workspaceEdit = new vscode.WorkspaceEdit();
+    edits.forEach(edit => {
+      workspaceEdit.replace(editor.document.uri, edit.range, edit.newText);
+    });
+
+    const applied = await vscode.workspace.applyEdit(workspaceEdit);
+    if (!applied) {
+      throw new Error('workspace edit was rejected');
+    }
   } catch (error) {
     vscode.window.showErrorMessage(`Collie formatting failed: ${messageForError(error)}`);
   }
 }
+
+const formattingOptionsFor = (editor: vscode.TextEditor): vscode.FormattingOptions => {
+  return {
+    tabSize: typeof editor.options.tabSize === 'number' ? editor.options.tabSize : 2,
+    insertSpaces: typeof editor.options.insertSpaces === 'boolean'
+      ? editor.options.insertSpaces
+      : true
+  };
+};
