@@ -24,6 +24,7 @@ async function main() {
       }
       : {
         ...inheritedEnv,
+        COLLIE_LSP_TEST_NODE: process.execPath,
         COLLIE_LSP_TEST_SERVER: fakeServerPath
       };
 

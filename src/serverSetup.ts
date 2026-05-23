@@ -72,12 +72,13 @@ export const getServerLaunchCandidates = (
 ): ServerLaunch[] => {
   const testServer = process.env.COLLIE_LSP_TEST_SERVER;
   if (testServer) {
+    const testNode = process.env.COLLIE_LSP_TEST_NODE ?? process.execPath;
     return [{
-      command: process.execPath,
+      command: testNode,
       args: [testServer, '--stdio'],
       cwd: primaryWorkspacePath(workspaceFolder),
       source: 'test',
-      displayCommand: `${process.execPath} ${testServer}`
+      displayCommand: `${testNode} ${testServer}`
     }];
   }
 

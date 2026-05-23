@@ -20,6 +20,37 @@ const baseConfig: CollieConfig = {
 };
 
 suite('Server Setup Tests', () => {
+  test('test server uses injected node executable', () => {
+    const testServer = process.env.COLLIE_LSP_TEST_SERVER;
+    const testNode = process.env.COLLIE_LSP_TEST_NODE;
+    process.env.COLLIE_LSP_TEST_SERVER = path.join(path.sep, 'tmp', 'fakeLspServer.js');
+    process.env.COLLIE_LSP_TEST_NODE = path.join(path.sep, 'tmp', 'node');
+
+    try {
+      const candidates = getServerLaunchCandidates(baseConfig);
+
+      assert.strictEqual(candidates.length, 1);
+      assert.strictEqual(candidates[0].command, path.join(path.sep, 'tmp', 'node'));
+      assert.deepStrictEqual(candidates[0].args, [
+        path.join(path.sep, 'tmp', 'fakeLspServer.js'),
+        '--stdio'
+      ]);
+      assert.strictEqual(candidates[0].source, 'test');
+    } finally {
+      if (testServer) {
+        process.env.COLLIE_LSP_TEST_SERVER = testServer;
+      } else {
+        delete process.env.COLLIE_LSP_TEST_SERVER;
+      }
+
+      if (testNode) {
+        process.env.COLLIE_LSP_TEST_NODE = testNode;
+      } else {
+        delete process.env.COLLIE_LSP_TEST_NODE;
+      }
+    }
+  });
+
   test('uses cmd and bat binstubs on Windows', () => {
     assert.deepStrictEqual(
       executableNamesForPlatform('win32'),
