@@ -2,8 +2,17 @@ import * as path from 'path';
 import * as childProcess from 'child_process';
 import { runTests } from '@vscode/test-electron';
 
-const DOWNLOAD_ATTEMPTS = 3;
+const configuredDownloadAttempts = Number(process.env.VSCODE_DOWNLOAD_ATTEMPTS ?? '10');
+const DOWNLOAD_ATTEMPTS = Number.isFinite(configuredDownloadAttempts)
+  && configuredDownloadAttempts > 0
+  ? configuredDownloadAttempts
+  : 10;
+const DOWNLOAD_RETRY_DELAY_MS = 3000;
 const executablePathPrefix = 'VSCODE_EXECUTABLE_PATH=';
+
+const delay = (milliseconds: number): Promise<void> => {
+  return new Promise(resolve => setTimeout(resolve, milliseconds));
+};
 
 const runDownloadProcess = (
   downloadScriptPath: string
@@ -47,6 +56,7 @@ const downloadVSCodeWithRetries = async (
     lastExit = result.signal ?? String(result.code);
     if (attempt < DOWNLOAD_ATTEMPTS) {
       console.warn(`VS Code download failed (${lastExit}); retrying ${attempt + 1}/${DOWNLOAD_ATTEMPTS}`);
+      await delay(DOWNLOAD_RETRY_DELAY_MS);
     }
   }
 
