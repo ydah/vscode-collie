@@ -86,6 +86,10 @@ const main = (): void => {
 
   requireEntry(entries, 'extension/package.json');
   requireEntry(entries, 'extension/out/extension.js');
+  requireEntry(entries, 'extension/walkthrough/installServer.md');
+  requireEntry(entries, 'extension/walkthrough/openGrammar.md');
+  requireEntry(entries, 'extension/walkthrough/configureRules.md');
+  requireEntry(entries, 'extension/walkthrough/useTasks.md');
   rejectEntryPrefix(entries, 'extension/src/');
   rejectEntryPrefix(entries, 'extension/out/client.js');
   rejectEntryPrefix(entries, 'extension/out/commands/');

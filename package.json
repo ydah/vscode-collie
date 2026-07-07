@@ -73,6 +73,53 @@
         "path": "./syntaxes/yacc.tmLanguage.json"
       }
     ],
+    "walkthroughs": [
+      {
+        "id": "collie.gettingStarted",
+        "title": "Get Started with Collie",
+        "description": "Set up Collie for Lrama grammar files, then lint, format, and navigate .y sources.",
+        "steps": [
+          {
+            "id": "collie.installServer",
+            "title": "Install collie-lsp",
+            "description": "Install the Ruby language server and verify that VS Code can start it.",
+            "media": {
+              "markdown": "walkthrough/installServer.md"
+            },
+            "completionEvents": [
+              "onCommand:collie.checkSetup"
+            ]
+          },
+          {
+            "id": "collie.openGrammar",
+            "title": "Open a grammar file",
+            "description": "Open a .y or .yacc file to enable Collie syntax highlighting, diagnostics, formatting, and navigation.",
+            "media": {
+              "markdown": "walkthrough/openGrammar.md"
+            }
+          },
+          {
+            "id": "collie.configureRules",
+            "title": "Configure project rules",
+            "description": "Create a .collie.yml file for project-specific linting and formatting settings.",
+            "media": {
+              "markdown": "walkthrough/configureRules.md"
+            },
+            "completionEvents": [
+              "onCommand:collie.createConfig"
+            ]
+          },
+          {
+            "id": "collie.useTasks",
+            "title": "Use Collie in tasks",
+            "description": "Attach the bundled problem matcher to build or CI tasks so Collie output appears in the Problems panel.",
+            "media": {
+              "markdown": "walkthrough/useTasks.md"
+            }
+          }
+        ]
+      }
+    ],
     "commands": [
       {
         "command": "collie.format",
@@ -258,6 +305,53 @@
         "editor.defaultFormatter": "ydah.collie"
       }
     },
+    "problemPatterns": [
+      {
+        "name": "collie-location",
+        "regexp": "^(.+?):(\\d+):(\\d+):\\s+(?:(error|warning|info):\\s+)?(?:\\[([^\\]]+)\\]\\s*)?(.+)$",
+        "file": 1,
+        "line": 2,
+        "column": 3,
+        "severity": 4,
+        "code": 5,
+        "message": 6
+      },
+      {
+        "name": "collie-line",
+        "regexp": "^(.+?):(\\d+):\\s+(?:(error|warning|info):\\s+)?(?:\\[([^\\]]+)\\]\\s*)?(.+)$",
+        "file": 1,
+        "line": 2,
+        "severity": 3,
+        "code": 4,
+        "message": 5
+      }
+    ],
+    "problemMatchers": [
+      {
+        "name": "collie",
+        "label": "Collie grammar problems",
+        "owner": "collie",
+        "source": "collie",
+        "severity": "warning",
+        "fileLocation": [
+          "autoDetect",
+          "${workspaceFolder}"
+        ],
+        "pattern": "$collie-location"
+      },
+      {
+        "name": "collie-line",
+        "label": "Collie grammar problems (line only)",
+        "owner": "collie",
+        "source": "collie",
+        "severity": "warning",
+        "fileLocation": [
+          "autoDetect",
+          "${workspaceFolder}"
+        ],
+        "pattern": "$collie-line"
+      }
+    ],
     "snippets": [
       {
         "language": "yacc",

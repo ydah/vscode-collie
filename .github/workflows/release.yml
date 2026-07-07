@@ -4,12 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Version or semver increment passed to vsce publish
+        description: Version or semver increment passed to npm version
         required: true
         default: patch
-  push:
-    tags:
-      - v*
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   release:
@@ -19,6 +20,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.RELEASE_PAT || github.token }}
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -28,6 +32,29 @@ jobs:
 
     - name: Install dependencies
       run: npm ci
+
+    - name: Verify release secrets
+      env:
+        VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      run: |
+        test -n "$VSCE_PAT" || (echo "VSCE_PAT is required to publish to the Marketplace" && exit 1)
+
+    - name: Verify release branch
+      run: |
+        test "${{ github.ref_name }}" = "main" || (echo "Run releases from main" && exit 1)
+
+    - name: Configure git
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+    - name: Bump version and create tag
+      id: version
+      run: |
+        npm version "${{ github.event.inputs.version }}" -m "Release v%s"
+        version="$(node -p "require('./package.json').version")"
+        echo "version=${version}" >> "$GITHUB_OUTPUT"
+        echo "tag=v${version}" >> "$GITHUB_OUTPUT"
 
     - name: Check
       run: |
@@ -45,14 +72,25 @@ jobs:
         VSCODE_TEST_VERSION: stable
       run: xvfb-run -a npm run vsix:install-smoke
 
-    - name: Upload VSIX to release
-      if: startsWith(github.ref, 'refs/tags/')
-      uses: softprops/action-gh-release@v2
-      with:
-        files: '*.vsix'
+    - name: Locate VSIX
+      id: vsix
+      run: |
+        vsix="$(ls -1 *.vsix | head -n 1)"
+        test -n "$vsix"
+        echo "path=${vsix}" >> "$GITHUB_OUTPUT"
+
+    - name: Push release commit and tag
+      run: git push origin HEAD:${{ github.ref_name }} --follow-tags
 
     - name: Publish to Marketplace
-      if: github.event_name == 'workflow_dispatch'
       env:
         VSCE_PAT: ${{ secrets.VSCE_PAT }}
-      run: npx vsce publish "${{ github.event.inputs.version }}"
+      run: npx vsce publish --packagePath "${{ steps.vsix.outputs.path }}"
+
+    - name: Upload VSIX to GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ steps.version.outputs.tag }}
+        name: Collie ${{ steps.version.outputs.tag }}
+        files: ${{ steps.vsix.outputs.path }}
+        generate_release_notes: true

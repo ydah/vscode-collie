@@ -51,6 +51,16 @@
     ],
     "description": "Grammar rule with action"
   },
+  "Lrama Rule Directive": {
+    "prefix": ["lrama-rule", "%rule"],
+    "body": [
+      "%rule ${1:rule_name}:",
+      "    ${2:production}",
+      "        { ${3:action} }",
+      "    ;"
+    ],
+    "description": "Lrama %rule directive with action"
+  },
   "Alternative": {
     "prefix": "alt",
     "body": [
@@ -67,18 +77,33 @@
     "description": "Empty production"
   },
   "Parameterized Rule": {
-    "prefix": ["prule", "%rule("],
+    "prefix": ["prule", "parameterized-rule", "%rule("],
     "body": [
-      "%rule ${1:name}(${2:X}): ${3:production} ;"
+      "%rule ${1:rule_name}(${2:Item}):",
+      "    ${2:Item}",
+      "        { ${3:action} }",
+      "  | ${1:rule_name}(${2:Item}) ${2:Item}",
+      "        { ${4:action} }",
+      "    ;"
     ],
-    "description": "Lrama parameterized rule"
+    "description": "Lrama parameterized %rule with recursive alternative"
   },
   "Inline Parameterized Rule": {
-    "prefix": ["inline", "%inline"],
+    "prefix": ["inline", "inline-rule", "%inline"],
     "body": [
-      "%rule %inline ${1:name}(${2:X}): ${3:production} ;"
+      "%rule %inline ${1:rule_name}(${2:Item}):",
+      "    ${2:Item}",
+      "        { ${3:action} }",
+      "    ;"
     ],
     "description": "Lrama inline parameterized rule"
+  },
+  "Parameterized Rule Call": {
+    "prefix": ["pcall", "parameterized-call"],
+    "body": [
+      "${1:rule_name}(${2:SYMBOL})"
+    ],
+    "description": "Call a Lrama parameterized rule"
   },
   "Named Reference": {
     "prefix": "ref",
@@ -86,6 +111,16 @@
       "${1:SYMBOL}[${2:name}]"
     ],
     "description": "Lrama named reference"
+  },
+  "Named Reference Action": {
+    "prefix": ["refaction", "named-reference-action"],
+    "body": [
+      "${1:rule_name}:",
+      "    ${2:LEFT}[${3:left}] ${4:RIGHT}[${5:right}]",
+      "        { \\$\\$ = \\$${3:left}; ${6:action} }",
+      "    ;"
+    ],
+    "description": "Rule action using Lrama named references"
   },
   "Parse Param": {
     "prefix": ["param", "%parse-param"],
