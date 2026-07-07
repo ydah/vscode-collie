@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import {
   executableNamesForPlatform,
+  extractCollieLspGemVersion,
   getServerLaunchCandidates
 } from '../../serverSetup';
 import { CollieConfig } from '../../config';
@@ -104,5 +105,17 @@ suite('Server Setup Tests', () => {
         process.env.COLLIE_LSP_TEST_SERVER = testServer;
       }
     }
+  });
+
+  test('extracts collie-lsp gem version from gem list output', () => {
+    assert.strictEqual(
+      extractCollieLspGemVersion('collie-lsp (0.3.1)'),
+      '0.3.1'
+    );
+    assert.strictEqual(
+      extractCollieLspGemVersion('collie-lsp (0.3.1, 0.2.0)'),
+      '0.3.1'
+    );
+    assert.strictEqual(extractCollieLspGemVersion(''), undefined);
   });
 });

@@ -212,7 +212,7 @@
             "null"
           ],
           "default": null,
-          "description": "Minimum collie-lsp version to accept before showing a warning"
+          "description": "Minimum collie-lsp version to accept before showing a warning (empty uses the extension version)"
         },
         "collie.enableLinting": {
           "type": "boolean",

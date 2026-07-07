@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import { LanguageClient, State } from 'vscode-languageclient/node';
 import { createClient, ensureLogDirectory } from './client';
 import { CommandServices, registerCommands } from './commands';
-import { getConfig, resolveConfigPath, toWorkspaceSettings } from './config';
+import { getConfig, getExtensionVersion, resolveConfigPath, toWorkspaceSettings } from './config';
 import { OUTPUT_CHANNEL_NAME, SETTINGS } from './constants';
 import { clearFeatureContexts, featureSupportFor, setFeatureContexts } from './features/capabilities';
 import { StatusBar } from './features/statusBar';
@@ -12,13 +12,17 @@ import {
   getRubyVersion,
   getServerLaunchCandidates,
   ServerLaunch,
+  SetupIssue,
   SetupCheckResult
 } from './serverSetup';
-import { isVersionAtLeast } from './version';
+import { isVersionAtLeast, requiredServerVersion } from './version';
 
 const RESTART_DEBOUNCE_MS = 300;
 const MAX_AUTO_RESTARTS = 3;
 const UNTITLED_CLIENT_KEY = '__untitled__';
+const INSTALL_COLLIE_LSP_ACTION = 'Install collie-lsp';
+const SET_LSP_PATH_ACTION = 'Set collie.lspPath';
+const SHOW_OUTPUT_ACTION = 'Show Output';
 
 interface ClientEntry {
   key: string;
@@ -35,6 +39,7 @@ export class ExtensionController implements vscode.Disposable, CommandServices {
   private readonly clients = new Map<string, ClientEntry>();
   private readonly clientStateDisposables = new Map<string, vscode.Disposable>();
   private readonly autoRestartCounts = new Map<string, number>();
+  private readonly warnedVersionMismatches = new Set<string>();
   private restartTimer: NodeJS.Timeout | undefined;
   private restartPromise: Promise<void> | undefined;
   private intentionallyStopping = false;
@@ -91,13 +96,17 @@ export class ExtensionController implements vscode.Disposable, CommandServices {
     this.writeSetupResult(result);
 
     if (result.ok) {
+      if (this.warnIfServerVersionUnsupported(result.version, config.minimumServerVersion, false)) {
+        return;
+      }
+
       vscode.window.showInformationMessage(
         `Collie setup OK: ${result.launch.displayCommand}${result.version ? ` (${result.version})` : ''}`
       );
       return;
     }
 
-    void this.showMissingServerActions(result.error ?? 'collie-lsp is unavailable');
+    void this.showMissingServerActions(result);
   }
 
   async copyEnvironmentInfo(): Promise<void> {
@@ -120,6 +129,8 @@ export class ExtensionController implements vscode.Disposable, CommandServices {
       `LSP command: ${result.launch.displayCommand}`,
       `LSP version: ${result.version ?? 'unavailable'}`,
       `LSP check: ${result.ok ? 'ok' : result.error ?? 'failed'}`,
+      `LSP setup issue: ${result.issue.kind}`,
+      `collie-lsp gem: ${result.issue.gemVersion ?? 'unknown'}`,
       `Config path: ${configPath ?? 'default'}`,
       `Linting enabled: ${config.enableLinting}`,
       `Formatting enabled: ${config.enableFormatting}`,
@@ -243,7 +254,7 @@ export class ExtensionController implements vscode.Disposable, CommandServices {
     if (!result.ok) {
       if (this.isActiveWorkspaceFolder(workspaceFolder)) {
         this.statusBar.setError(result.error ?? 'collie-lsp is unavailable');
-        void this.showMissingServerActions(result.error ?? 'collie-lsp is unavailable');
+        void this.showMissingServerActions(result);
       }
       return;
     }
@@ -429,40 +440,106 @@ export class ExtensionController implements vscode.Disposable, CommandServices {
     }
 
     this.outputChannel.appendLine(
-      `Setup check failed${scope} for ${result.launch.displayCommand}: ${result.error ?? 'unknown error'}`
+      `Setup check failed${scope} for ${result.launch.displayCommand}: ${result.error ?? 'unknown error'} [${result.issue.kind}]`
     );
   }
 
-  private async showMissingServerActions(message: string): Promise<void> {
+  private async showMissingServerActions(resultOrMessage: SetupCheckResult | string): Promise<void> {
+    const message = typeof resultOrMessage === 'string'
+      ? resultOrMessage
+      : resultOrMessage.error ?? 'collie-lsp is unavailable';
+    const issue = typeof resultOrMessage === 'string' ? undefined : resultOrMessage.issue;
     const action = await vscode.window.showErrorMessage(
-      `Collie language server is not available: ${message}`,
-      'Install gem',
-      'Set collie.lspPath',
-      'Show Output'
+      this.setupErrorMessage(message, issue),
+      ...this.setupActions(issue)
     );
 
-    if (action === 'Install gem') {
-      const terminal = vscode.window.createTerminal('Collie Setup');
-      terminal.sendText('gem install collie-lsp');
-      terminal.show();
-    } else if (action === 'Set collie.lspPath') {
+    await this.handleSetupAction(action);
+  }
+
+  private setupErrorMessage(message: string, issue: SetupIssue | undefined): string {
+    if (!issue) {
+      return `Collie language server is not available: ${message}`;
+    }
+
+    switch (issue.kind) {
+      case 'collieLspGemMissing':
+        return 'Collie language server is not installed. Install the collie-lsp gem to enable linting and formatting.';
+      case 'rubyMissing':
+        return `Collie requires Ruby before collie-lsp can run: ${issue.detail ?? message}`;
+      case 'rubyGemsMissing':
+        return `Collie could not query RubyGems before installing collie-lsp: ${issue.detail ?? message}`;
+      case 'customPathFailed':
+        return `Collie could not start the configured collie.lspPath: ${message}`;
+      case 'serverNotExecutable':
+        if (issue.gemVersion) {
+          return `collie-lsp ${issue.gemVersion} is installed, but VS Code could not start it: ${message}`;
+        }
+
+        return `Collie language server is not available: ${message}`;
+      case 'none':
+        return `Collie language server is not available: ${message}`;
+    }
+  }
+
+  private setupActions(issue: SetupIssue | undefined): string[] {
+    if (issue?.kind === 'collieLspGemMissing') {
+      return [INSTALL_COLLIE_LSP_ACTION, SET_LSP_PATH_ACTION, SHOW_OUTPUT_ACTION];
+    }
+
+    return [SET_LSP_PATH_ACTION, SHOW_OUTPUT_ACTION];
+  }
+
+  private async handleSetupAction(action: string | undefined): Promise<void> {
+    if (action === INSTALL_COLLIE_LSP_ACTION) {
+      this.installCollieLsp();
+    } else if (action === SET_LSP_PATH_ACTION) {
       await vscode.commands.executeCommand('workbench.action.openSettings', SETTINGS.lspPath);
-    } else if (action === 'Show Output') {
+    } else if (action === SHOW_OUTPUT_ACTION) {
       this.showOutputChannel();
     }
   }
 
+  private installCollieLsp(): void {
+    const terminal = vscode.window.createTerminal('Collie Setup');
+    terminal.sendText('gem install collie-lsp');
+    terminal.show();
+  }
+
   private warnIfServerVersionUnsupported(
     version: string | undefined,
-    minimumVersion: string | undefined
-  ): void {
-    if (isVersionAtLeast(version, minimumVersion)) {
-      return;
+    minimumVersion: string | undefined,
+    dedupe = true
+  ): boolean {
+    const requiredVersion = requiredServerVersion(
+      minimumVersion,
+      getExtensionVersion(this.context)
+    );
+    if (isVersionAtLeast(version, requiredVersion)) {
+      return false;
     }
 
-    vscode.window.showWarningMessage(
-      `Collie language server ${version ?? 'unknown'} is older than required ${minimumVersion}.`
+    const key = `${version ?? 'unknown'}:${requiredVersion ?? 'unknown'}`;
+    if (dedupe && this.warnedVersionMismatches.has(key)) {
+      return true;
+    }
+
+    this.warnedVersionMismatches.add(key);
+    void this.showVersionMismatchActions(version, requiredVersion);
+    return true;
+  }
+
+  private async showVersionMismatchActions(
+    version: string | undefined,
+    requiredVersion: string | undefined
+  ): Promise<void> {
+    const action = await vscode.window.showWarningMessage(
+      `Collie language server version mismatch: ${version ?? 'unknown'} is older than required ${requiredVersion}.`,
+      INSTALL_COLLIE_LSP_ACTION,
+      SHOW_OUTPUT_ACTION
     );
+
+    await this.handleSetupAction(action);
   }
 
   private defaultConfigUri(

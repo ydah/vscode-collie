@@ -38,6 +38,13 @@ export const isVersionAtLeast = (
   return compareSemanticVersions(actualVersion, minimumVersion) >= 0;
 };
 
+export const requiredServerVersion = (
+  configuredMinimum: string | undefined,
+  extensionVersion: string
+): string | undefined => {
+  return extractSemanticVersion(configuredMinimum) ?? extractSemanticVersion(extensionVersion);
+};
+
 const parseVersion = (version: string): [number, number, number] => {
   const match = /^(\d+)\.(\d+)\.(\d+)/.exec(version);
   if (!match) {

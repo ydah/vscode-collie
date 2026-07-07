@@ -21,10 +21,12 @@ Linter and formatter for Lrama Style BNF grammar files (.y files).
   gem install collie-lsp
   ```
 
+If `collie-lsp` is missing, Collie shows an **Install collie-lsp** action that opens a terminal with the install command. Collie also warns when the detected language server is older than the extension expects.
+
 ## Installation
 
 1. Install from VSCode Marketplace
-2. Install `collie-lsp` gem
+2. Install `collie-lsp` gem, or use the **Install collie-lsp** action when prompted
 3. Open a .y file and start coding
 
 ## Configuration

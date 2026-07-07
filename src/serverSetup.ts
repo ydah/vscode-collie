@@ -14,9 +14,31 @@ export interface ServerLaunch {
   displayCommand: string;
 }
 
+export type SetupIssueKind =
+  | 'none'
+  | 'customPathFailed'
+  | 'rubyMissing'
+  | 'rubyGemsMissing'
+  | 'collieLspGemMissing'
+  | 'serverNotExecutable';
+
+export interface SetupIssue {
+  kind: SetupIssueKind;
+  detail: string | undefined;
+  rubyVersion: string | undefined;
+  gemVersion: string | undefined;
+}
+
 export interface SetupCheckResult {
   ok: boolean;
   launch: ServerLaunch;
+  version: string | undefined;
+  error: string | undefined;
+  issue: SetupIssue;
+}
+
+interface GemProbeResult {
+  installed: boolean;
   version: string | undefined;
   error: string | undefined;
 }
@@ -65,6 +87,18 @@ const workspaceHasGemfile = (workspaceFolder?: vscode.WorkspaceFolder): boolean 
 const primaryWorkspacePath = (workspaceFolder?: vscode.WorkspaceFolder): string | undefined => {
   return workspaceFolder?.uri.fsPath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 };
+
+const setupIssue = (
+  kind: SetupIssueKind,
+  detail?: string,
+  rubyVersion?: string,
+  gemVersion?: string
+): SetupIssue => ({
+  kind,
+  detail,
+  rubyVersion,
+  gemVersion
+});
 
 export const getServerLaunchCandidates = (
   config: CollieConfig,
@@ -163,11 +197,82 @@ export const checkServerLaunch = async (
       timeoutMs
     );
     const version = (stdout || stderr).trim().split(/\r?\n/)[0];
-    return { ok: true, launch, version: version || undefined, error: undefined };
+    return {
+      ok: true,
+      launch,
+      version: version || undefined,
+      error: undefined,
+      issue: setupIssue('none')
+    };
   } catch (error) {
     const message = asErrorMessage(error);
-    return { ok: false, launch, version: undefined, error: message };
+    return {
+      ok: false,
+      launch,
+      version: undefined,
+      error: message,
+      issue: setupIssue('serverNotExecutable', message)
+    };
   }
+};
+
+export const extractCollieLspGemVersion = (value: string | undefined): string | undefined => {
+  if (!value) {
+    return undefined;
+  }
+
+  const match = /\bcollie-lsp \(([^),\s]+)/.exec(value);
+  return match?.[1];
+};
+
+export const getCollieLspGemVersion = async (
+  workspaceFolder?: vscode.WorkspaceFolder
+): Promise<GemProbeResult> => {
+  try {
+    const { stdout, stderr } = await execFile(
+      'gem',
+      ['list', 'collie-lsp', '--local', '--exact'],
+      primaryWorkspacePath(workspaceFolder),
+      2500
+    );
+    const version = extractCollieLspGemVersion(stdout || stderr);
+    return {
+      installed: Boolean(version),
+      version,
+      error: undefined
+    };
+  } catch (error) {
+    return {
+      installed: false,
+      version: undefined,
+      error: asErrorMessage(error)
+    };
+  }
+};
+
+const diagnoseSetupIssue = async (
+  failedResult: SetupCheckResult | undefined,
+  workspaceFolder?: vscode.WorkspaceFolder
+): Promise<SetupIssue> => {
+  if (failedResult?.launch.source === 'custom') {
+    return setupIssue('customPathFailed', failedResult.error);
+  }
+
+  const rubyVersion = await getRubyVersion(workspaceFolder);
+  if (rubyVersion.startsWith('unavailable')) {
+    return setupIssue('rubyMissing', rubyVersion);
+  }
+
+  const gem = await getCollieLspGemVersion(workspaceFolder);
+  if (gem.error) {
+    return setupIssue('rubyGemsMissing', gem.error, rubyVersion);
+  }
+
+  if (!gem.installed) {
+    return setupIssue('collieLspGemMissing', undefined, rubyVersion);
+  }
+
+  return setupIssue('serverNotExecutable', failedResult?.error, rubyVersion, gem.version);
 };
 
 export const findAvailableServer = async (
@@ -189,17 +294,30 @@ export const findAvailableServer = async (
     }
   }
 
-  return lastResult ?? {
+  const fallback = lastResult ?? {
     ok: false,
     launch: candidates[0],
     version: undefined,
-    error: 'No collie-lsp launch candidate was available'
+    error: 'No collie-lsp launch candidate was available',
+    issue: setupIssue('serverNotExecutable', 'No collie-lsp launch candidate was available')
+  };
+
+  return {
+    ...fallback,
+    issue: await diagnoseSetupIssue(fallback, workspaceFolder)
   };
 };
 
-export const getRubyVersion = async (): Promise<string> => {
+export const getRubyVersion = async (
+  workspaceFolder?: vscode.WorkspaceFolder
+): Promise<string> => {
   try {
-    const { stdout, stderr } = await execFile('ruby', ['--version'], primaryWorkspacePath(), 2500);
+    const { stdout, stderr } = await execFile(
+      'ruby',
+      ['--version'],
+      primaryWorkspacePath(workspaceFolder),
+      2500
+    );
     return (stdout || stderr).trim();
   } catch (error) {
     return `unavailable (${asErrorMessage(error)})`;
